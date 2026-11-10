@@ -188,7 +188,7 @@ body[data-hf="live"] .ag:hover .rl{color:var(--white)}
       <span class="mval" id="bgmVal">60</span>
     </div>
     <audio id="bgmAudio" data-src="audio/sw421k.mp3" loop preload="auto" playsinline></audio>
-    <div class="ov chk" id="chk"><b id="chkK">STABILITY CHECK</b><span id="chkV">CFL = |u| Δt / Δx</span></div>
+    <div class="ov chk" id="chk"><b id="chkK">等待数据</b><span id="chkV">—</span></div>
     <div class="ov status"><div class="big" id="stBig">7 / 11 METHODS · 4 PENDING</div><div class="sm" id="stSmall">independent runs · shared event bus</div></div>
   </div>
 
@@ -325,10 +325,7 @@ if (BAKED_MINE) PRESETS.MINE = { ...BASE, ...BAKED_MINE };
 const C = { ...(PRESETS.MINE || PRESETS.B) };
 const zf = z => 1 + (z - 1) * C.camZoom;
 
-const TOK = ['load_collection()', 'extract_eq', '∂u/∂t', 'rho', 'grad(p)', 'dt=1e-3', 'assert', 'residual', 'solve()',
-  'mesh', 'bc.apply', 'flux', 'CFL', '0.0041', 'ok', 'PASS', 'ref#12', 'scene_07', 'u_star', 'div(u)', 'proj', 'advect',
-  'step++', 'tol', '1.2e-6', 'kernel', 'paper[37]', 'eq.(4)', 'fig.3', 'table2', 'nu=0.01', 'v_x', 'omega', 'bounce',
-  'f_eq', 'stream', 'collide', 'Re=100', 'check', '>>>', 'match', 'diff', 'L2', 'grid64', 'cfg', 'seed=7'];
+const TOK = ['step()', 'tool()', 'ctx', 'tok', 'run()', 'sess', 'lat', 'ok', 'wait', 'emit'];
 
 /* ---------- rhythm: an uneven beat clock drives everything ---------- */
 const PATTERN = [0.5, 0.25, 0.25, 0.5, 0.5, 0.75, 0.25, 0.25, 0.25, 1.0];
@@ -892,9 +889,8 @@ function buildCards() {
   Object.assign(rot, { from: 0, to: 0, t: 1, dur: 1, hold: 0 });
 }
 const TINTS = [[232, 234, 240], [232, 234, 240], [232, 234, 240], [232, 234, 240], [232, 234, 240], [232, 234, 240], [196, 184, 246], [196, 184, 246], [168, 222, 214], [206, 212, 150]];
-const HEAD = ['SOLVER/02', 'EXTRACT', 'REF.SCENE 07', 'METHOD M04', 'CHECK', 'RESIDUAL', 'PAPER 37', 'AGENT 09', 'BUFFER A',
-  'DIFF FIELD', 'STEP 1284', 'MESH 64x64', 'PROJECT', 'ADVECT', 'BC / WALL', 'LBM D2Q9', 'QUEUE', 'TRACE', 'EQ.(4)', 'FIG.3', 'VALIDATE', 'SCENE 12'];
-const KEYS = ['dt', 'CFL', 'nu', 'Re', 'tol', 'iter', 'L2', 'mass', 'div', 'u_max', 'rho', 'err', 'grid', 'seed'];
+const HEAD = ['STEP 0', 'TURN 0', 'TOK/S 0', 'CTX 0%', 'SESS 0', 'RUN 0', 'TOOL', 'CACHE', 'LAT ms', 'WS 0'];
+const KEYS = ['step', 'turn', 'tok', 'ctx', 'sess', 'run', 'tool', 'lat', 'cache', 'err'];
 const CODE_T = ['load()', 'step(u)', 'proj(p)', 'bc.apply', 'solve()', 'grad p', 'div u', 'assert', 'f_eq', 'stream', 'collide', 'ok', 'PASS',
   'ref#12', 'diff', 'L2<tol', 'u*', '->', '==', 'dt/2', 'emit', 'push', 'read', 'fig3', 'eq4'];
 const rgba = (t, a) => `rgba(${t[0]},${t[1]},${t[2]},${a})`;
@@ -1265,8 +1261,7 @@ function drawStage(dt) {
 }
 
 /* ---------- callout box with leader line (follows the camera) ---------- */
-const CHECKS = [['STABILITY CHECK', 'CFL = |u| Δt / Δx'], ['MASS CONSERVATION', 'Σ ρ dV = const'], ['RESIDUAL NORM', 'r = ‖b − A·u‖₂'],
-  ['BOUNDARY', 'u · n = 0  on ∂Ω'], ['PROJECTION', '∇²p = ∇ · u* / Δt']];
+/* 原作的假检验公式已移除：相位由真实事件驱动 */
 let chkI = 0;
 const chkEl = document.getElementById('chk');
 function drawCallout() {
@@ -1279,16 +1274,7 @@ function drawCallout() {
   S.beginPath(); S.moveTo(anchor.x, anchor.y); S.lineTo(bx, by + 12); S.stroke();
   S.fillStyle = '#fff'; S.fillRect(anchor.x - 1.5, anchor.y - 1.5, 3, 3);
 }
-setInterval(() => {
-  if (window.__HF_LIVE) return;
-  chkEl.style.opacity = 0;
-  setTimeout(() => {
-    chkI = (chkI + 1) % CHECKS.length;
-    document.getElementById('chkK').textContent = CHECKS[chkI][0];
-    document.getElementById('chkV').textContent = CHECKS[chkI][1];
-    chkEl.style.opacity = 1;
-  }, 400);
-}, 3600);
+/* 假公式轮播已移除：相位框只显示真实状态（生成中/工具/思考中/空闲） */
 
 /* =========================================================
    HEADER KPIs
@@ -1583,7 +1569,7 @@ function drawVal() {
   const x = cVal.x, w = cVal.w, h = cVal.h;
   if (hfDrawValLive(x, w, h)) return;
   x.clearRect(0, 0, w, h);
-  const lw = 58, n = Math.floor((w - lw) / 2), names = ['MASS', 'STABILITY', 'RESIDUAL'];
+  const lw = 58, n = Math.floor((w - lw) / 2), names = ['TOKEN/S', '调用/分', '延迟 ms'];
   if (rnd() < 0.01) valSpike = 1;
   valSpike *= 0.9;
   const vals = [Math.sin(T * 3) * 0.35 + Math.sin(T * 7.3) * 0.15 + gauss() * 0.06,
