@@ -1400,15 +1400,30 @@ function resizePanels() {
   valBuf = [[], [], []];
 }
 let T = 0;
-const flow = (x, y) => Math.sin(x * 0.035 + T * 0.6) * Math.cos(y * 0.05 - T * 0.4) * Math.PI + Math.sin((x + y) * 0.01 + T * 0.2);
+/* 粒子流场：形状不变，只让流场时钟由真实吞吐驱动 */
+let HF_FLOW_T = 0, HF_BURST = 0, HF_EV_SEEN = -1;
+function hfActivity() {
+  const last = HF_VAL && HF_VAL.last;
+  if (!last) return 0.15;
+  const tok = Math.min(1, (last[0] || 0) / 60);
+  const calls = Math.min(1, (last[1] || 0) / 30);
+  return Math.max(0.12, Math.min(1, 0.22 + 0.5 * tok + 0.5 * calls));
+}
+const flow = (x, y) => Math.sin(x * 0.035 + HF_FLOW_T * 0.6) * Math.cos(y * 0.05 - HF_FLOW_T * 0.4) * Math.PI + Math.sin((x + y) * 0.01 + HF_FLOW_T * 0.2);
 function drawAdv(dt) {
   const x = cAdv.x, w = cAdv.w, h = cAdv.h;
+  const act = hfActivity();
+  HF_FLOW_T += dt * (0.25 + 1.9 * act);
+  const ev = HF_VAL && HF_VAL.counters ? (HF_VAL.counters.events || 0) : 0;
+  if (HF_EV_SEEN < 0) HF_EV_SEEN = ev;
+  if (ev > HF_EV_SEEN) { HF_BURST = 1; HF_EV_SEEN = ev; }
+  HF_BURST = Math.max(0, HF_BURST - dt * 1.7);
   x.fillStyle = 'rgba(14,15,18,0.22)'; x.fillRect(0, 0, w, h);
   x.fillStyle = 'rgba(120,125,135,.25)';
   for (let i = 6; i < w; i += 12) for (let j = 6; j < h; j += 12) x.fillRect(i, j, 1, 1);
-  x.strokeStyle = 'rgba(235,238,244,.7)'; x.lineWidth = 0.8; x.beginPath();
+  x.strokeStyle = 'rgba(235,238,244,' + (0.45 + 0.5 * act).toFixed(2) + ')'; x.lineWidth = 0.8 + HF_BURST * 0.5; x.beginPath();
   for (const p of advP) {
-    const a = flow(p.x, p.y), nx = p.x + Math.cos(a) * 22 * dt, ny = p.y + Math.sin(a) * 22 * dt;
+    const a = flow(p.x, p.y), sp = 22 * dt * (0.55 + act) * (1 + HF_BURST * 0.6), nx = p.x + Math.cos(a) * sp, ny = p.y + Math.sin(a) * sp;
     x.moveTo(p.x, p.y); x.lineTo(nx + Math.cos(a) * 2, ny + Math.sin(a) * 2);
     p.x = nx; p.y = ny; p.l -= dt;
     if (p.l < 0 || p.x < 0 || p.x > w || p.y < 0 || p.y > h) { p.x = rnd() * w; p.y = rnd() * h; p.l = rr(1, 4); }
