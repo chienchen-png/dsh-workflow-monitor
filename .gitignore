@@ -14,3 +14,7 @@ Desktop.ini
 
 # deps (this package has none, but keep the door closed)
 node_modules/
+
+# 视频产物（体积大，不入库）
+footage/
+
