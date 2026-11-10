@@ -162,7 +162,7 @@ python -m http.server 8791 --bind 127.0.0.1 --directory .
 Host 侧还会从同一批日志里聚合 `assistant/message` 的 `usage`：
 
 - **今日**：input / output / cacheRead / 请求数，见顶部 KPI「今日 tokens」
-- **近 7 天**：逐日请求与 token 量（底部通栏「用量趋势 / 模型占比」：左半是 7 天柱状，灰柱=token、白/粉柱=请求数；右半是模型占比条）
+- **近 7 天**：逐日请求与 token 量
 - **各模型**：按输出 token 排序的前 6 名（日志里没有模型名时归入 `unknown`）
 
 **金额是可选的。** 把 `prices.json` 填上你供应商的实际单价（每百万 token，四档：`input` / `cacheMiss` / `cacheHit` / `output`），KPI 就会从「今日 tokens」变成「今日消耗 ¥x.xx」：
