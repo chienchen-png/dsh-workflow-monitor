@@ -1,40 +1,91 @@
 # 智能体实时运行态势（dsh-workflow-monitor）
 
-> 一块近黑白的「仪器墙」插件：把 DeepSeek Harness 里所有工作区与会话的运行状态，铺成一整屏可读的态势画面。
-> 旋转的数据墙每一段属于一个工作区，底部八块面板是实时事件流、工作区路由、会话调度与指标矩阵。
+> DeepSeek Harness 的一块「仪器墙」：把整个 harness 的工作区、会话、事件与用量，铺成一屏可读的实时态势。
+> 近黑白、极小字、高密度——像实验台上的监视终端，而不是普通的 Web 仪表盘。
 
-![预览](docs/preview.png)
+![界面](docs/preview.jpg)
 
-> **非商业许可。** 本项目的视觉与构图是 [HALOFLUX](https://github.com/Ryder191/haloflux) 的改编作品，
-> 因此**继承其 PolyForm Noncommercial License 1.0.0**：源码可见、可学习、可自用、可修改，
-> **不可用于任何商业用途**（含公司内部使用、收费产品、接单交付、付费课程）。详见 [LICENSE](LICENSE) 与 [NOTICE](NOTICE)。
+> **非商业许可。** 本项目视觉与构图改编自 [HALOFLUX](https://github.com/Ryder191/haloflux)，
+> 继承其 PolyForm Noncommercial License 1.0.0：可学习、可自用、可修改，**不可商用**。
+> 详见 [LICENSE](LICENSE) 与 [NOTICE](NOTICE)。
 
 ---
 
-## 1. 这是什么
+## 1. 它是什么
 
-DeepSeek Harness 的客户端插件。安装后，左侧导航多出一个入口，点开就是一整屏的态势画面：
+一个 DeepSeek Harness 客户端插件。刷新后左侧导航出现「监控大屏」，点开即整屏态势。
 
-- **顶部**：左侧是身份（标题 + 运行环境），中间是五个读数（工作区 / 会话 / 运行中 / TOKEN/S / 上下文），右侧是时钟与状态胶囊（`● 运行中` / `○ 休整`）
-- **中央**：旋转的黑色数据墙，挂满微文字、波形、矩阵；墙外是白色粒子爆流，左侧是细线蛛网
-- **底部**：2×4 遥测面板 —— 事件流、粒子流场、工具调用、参考/差异场、工作区路由、采样缓冲、会话调度、指标矩阵
+**上方**是一条身份与读数带：`智能体实时运行态势` + 环境行 + 6 个指标灯 + 时钟 + 状态胶囊。
+**中间**是旋转的数据墙（细线蛛网 / 白色粒子爆流 / 密排微文字），墙上的微面板标题是实时指标码。
+**下方**是 2×4 共 8 块遥测面板。
 
-它不是装饰壁纸：所有文字与数字都来自真实会话（KPI、工作区归属、每会话状态、工具调用、事件流、相位），
-canvas 只负责氛围，可读信息全部是 DOM。
+## 2. 顶部指标栏（6 个，全部真实）
 
-## 2. 安装
+| 指标 | 数据来源 | 实现 |
+|---|---|---|
+| **工作区** | `useWorkspaces()` 的 `items` | 统计有会话的工作区数；灯亮=有工作区 |
+| **会话** | `useSessions()` 的 `byId` | 排除 `blank` 空会话后计数 |
+| **运行中** | `useSessionStatus()` 的 `Map<id,{running}>` | 优先用实时状态，回退行上的 `running`；灯为粉色 |
+| **TOKEN/S** | 流式 `assistant/live-chunk` 的文本增量 | 每 600ms 取增量字符数 ÷ 实际间隔，再做 `0.6/0.4` 指数平滑。**三档灯**：<10 琥珀（慢，查供应商/网络）、10–80 冰蓝、>80 亮白；无会话运行时熄灭 |
+| **上下文** | `assistant/message.usage.inputTokens` | 以 128k 为分母取占比 |
+| **内存** | Host 半边 `os.totalmem()/freemem()` | 随 payload 每 30 秒刷新。**三档灯**：<75% 冰蓝、75–90% 琥珀、>90% 红色带脉冲，数字同步变色 |
 
-三种方式，任选其一。装完**刷新页面**，左侧导航出现「监控大屏」入口即成功。
+右侧还有一个状态胶囊：有会话运行 → `● 运行中`（粉），否则 `○ 休整`。
 
-### 方式 A：让 AI 帮你装（推荐，不用敲命令）
+## 3. 下方八块面板
 
-把下面这句话原样发给 DeepSeek Harness 的对话框：
+| 面板 | 内容 | 真实数据？ | 实现要点 |
+|---|---|---|---|
+| **事件流** | 最近 14 条事件：工具调用、步骤、结果 | ✅ | 订阅活跃会话 `eventSource` 快照，取 `tool/call`、`tool/result`、`turn/step`；动词压缩为 读/建/验/问 |
+| **活动流场** | 粒子流 + 三态灯（生成/工具/空闲） | ✅ 驱动真实 | **保图案换驱动**：流场函数不变，`Tflow += dt×(0.25+1.9×活跃度)`；活跃度=运行会话数+最近事件。三态有质的差异：空闲 32% 粒子/短拖影/0.30 亮度，生成 100% 粒子/4.4 倍拖影/0.92 亮度，工具调用时中心放射 14 条粉色短须 |
+| **工具调用** | 最近 10 次工具名与参数 | ✅ | `tool/call` 的 `name` + `arguments`，逐行累积 |
+| **缓存命中 / 上下文** | 左场=缓存命中率，右场=上下文占用，底部柱=输出 token 分布 | ✅ | **保几何换驱动**：原作的热力网格与动效原样保留，只把相位/振幅/斑块位置接到 `cacheHit` 与 `ctxFrac`；直方图喂 `log10(outputTokens)` 分布 |
+| **工作区路由** | 工作区 → 会话数 → 运行数 → 状态 | ✅ | 双端取归属：先读工作区记录的成员列表，再读会话行的 `workspaceId`，都没有归入「未归组」 |
+| **运行采样** | TOKEN/S、调用·分、延迟 ms 三条曲线 | ✅ | 每秒采样，环形缓冲 60 点，各自自动量程；横轴持续滚动（运动感来自滚动，不伪造波形） |
+| **会话调度** | 每会话一行：序号、工作区、活动格、状态 | ✅ | 行标签取会话名前 3 字；点击弹出 DOM 抽屉（工作区/状态/会话 ID，Esc 关闭） |
+| **会话活跃度** | 28 列 × 1.5 小时 = **42 小时**活动矩阵 | ✅ | Host 读会话日志按 1.5 小时切桶。**越久越淡**：0–14h 100%、14–28h 62%、28–42h 32%，42h 外不画 |
+
+中央还有一个相位框（带引线的小方框），显示真实相位：**生成中 / 调用工具 / 思考中 / 运行中 / 空闲**。
+
+## 4. 数据从哪来（全部只读）
+
+| 来源 | 用途 |
+|---|---|
+| `props.useSessions((s)=>s)` → `{byId, ids, phase}` | 会话列表、标题、running、blank |
+| `props.useSessionStatus((m)=>m)` → `Map<id,{running}>` | 实时运行态 |
+| `props.useWorkspaces((s)=>s)` → `{items, archivedSessionIds}` | 工作区名与归属 |
+| `ctx.sessions.binding(id).eventSource` | 活跃会话的持久事件与流式增量 |
+| Host 半边 `os` / 会话日志 | 内存占用、42 小时活动桶、今日/7 天用量 |
+
+所有宿主读取都包在 `try/catch`；宿主未提供某 store 时用空形状兜底，钩子顺序保持稳定。
+
+### Host 半边（唯一的服务端逻辑）
+
+`index.js` 注册一条命名路由 `/workflow-monitor/usage-v2`，返回：
+
+```json
+{ "at": 0, "bucketMs": 5400000, "columns": 28,
+  "rows": [{ "id": "session-…", "buckets": [ … 28 … ], "last": 0, "total": 0 }],
+  "usage": { "today": {…}, "days": [ …7… ], "models": [ … ] },
+  "mem": { "total": 0, "free": 0, "used": 0 } }
+```
+
+- 会话日志是**拼接 zstd 帧**（每次追加一帧），Node 的一次性解压与流式解压都只返回第一帧；`host/history.mjs` 按魔数 `28 B5 2F FD` 切帧后逐帧解压（实测 3454 帧 → 5792 事件，2.3 秒）。
+- 路由用 `ctx.webServer.register({ kind:'exact', path, handler })` 注册；**冷启动时用 `ctx.inject(['webServer'])` 等待服务就绪**，否则插件会先于服务激活而注册失败。
+- 聚合结果缓存 30 秒。
+
+## 5. 安装
+
+三种方式任选，装完**刷新页面**，左侧导航出现「监控大屏」即成功。
+
+### 方式 A：让 AI 帮你装（推荐）
+
+把下面这段原样发给 DeepSeek Harness：
 
 > 请帮我安装这个插件：`https://github.com/chienchen-png/dsh-workflow-monitor`。
 > 把它克隆到本机任意目录，然后用 `plugin_manager` 的 `install_bundle` 指向该目录安装。
-> 装完删除所下载的冗余文件，告诉我要不要刷新页面、以及左侧导航里入口叫什么名字。
-
-AI 会自己克隆、安装、并告诉你下一步。
+> 装完告诉我要不要刷新页面、以及左侧导航里入口叫什么名字。
+> **完成相关部署后删除所有下载辅助的相关文件。**
 
 ### 方式 B：从 GitHub 直接装
 
@@ -48,151 +99,59 @@ dsh plugin --profile desktop add github:chienchen-png/dsh-workflow-monitor
 plugin_manager install_bundle  target=<本目录绝对路径>
 ```
 
-卸载：
+卸载：`plugin_manager remove_bundle target=dsh-workflow-monitor`
 
-```text
-plugin_manager remove_bundle  target=dsh-workflow-monitor
-```
-
-> **暂未发布到 npm**，所以不在社区市场的搜索目录里。GitHub 安装与本地安装都完全可用。
->
-> 实测于 DeepSeek Harness Desktop `2.0.22-next`（内核 `@deepseek-ai/dsh-* 0.2.2-rc.1`）。
-## 3. 视觉语义
-
-| 元素 | 含义 |
-|---|---|
-| 数据墙分段 | 一段 = 一个工作区；段间细亮分隔线，相邻段色温微差 |
-| 墙上微面板标题 | 实时指标短码：`WS 2`、`SESS 4`、`STEP 0`、`TOKEN/S 0`（4px 只放拉丁，中文会糊） |
-| 相位框 | 生成中 / 调用工具 / 思考中 / 运行中 / 空闲（依据最近事件类型与时间） |
-| 事件流 | 活跃会话的真实事件：工具调用、工具结果、步骤；动词用 读/建/验/问 |
-| 工作区路由 | 工作区 → 会话数 → 运行数 → 运行/空闲 |
-| 会话调度 | 每个会话一行：编号、工作区、活动格、状态；点一行弹出抽屉 |
-| 抽屉 | 工作区 / 状态 / 会话 ID；`Esc` 或 ✕ 关闭 |
-
-**三态状态机**：`run`（节奏 1.0、固定机位）/ `idle`（节奏 0.34、亮度 0.62、自动运镜巡视）/
-`void`（0.18），900ms 缓动过渡，只渐变标量参数、不触发几何重建。
-`camera` 由状态机独占，宿主快照只下发静态构图，否则每次推送都会把运镜钉死。
-
-## 4. 数据来源（全部只读）
-
-| 来源 | 用途 |
-|---|---|
-| `props.useSessions((s) => s)` → `{ byId, ids, phase }` | 会话列表、标题、`running`、`blank` |
-| `props.useSessionStatus((m) => m)` → `Map<id, {running}>` | 实时运行状态（优先于列表快照） |
-| `props.useWorkspaces((s) => s)` → `{ items, archivedSessionIds, pinnedSessionIds }` | 工作区名与归属 |
-| `ctx.sessions.binding(id).eventSource.getSnapshot()` | 活跃会话的 `tool/call`、`tool/result`、`turn/step`、`assistant/message`、瞬态 `assistant/live-chunk` |
-
-所有宿主读取都包在 `try/catch` 里；宿主未提供某个 store 时用空形状兜底，钩子调用顺序保持稳定。
-工作区归属**两侧都读**：先看工作区记录里的成员列表（`sessionIds` / `memberIds` / `sessions` / `members` / `children`），
-再看会话行上的 `workspaceId`，都没有才归入「未归组」。
-
-## 5. 借鉴与改进
-
-本项目**不是**从零发明，明确交代来源：
-
-### 借鉴自 HALOFLUX（Ryder191）
-
-- 整体美术：旋转数据墙、环带微面板、白色粒子爆流、细线蛛网、扫描线与暗角
-- 构图逻辑：巨大的环形带穿过画面、镜头推拉、节拍驱动的节奏
-- 场景实现：`src/scene.html` 是原作 `lab.html` 的改编版（保留其版权声明与许可）
-
-### 借鉴自 dsh-haloflux（Ke-wood）
-
-- DSH 插件形态：`package.json` 的 `dsh.bundle` + `dsh.client`、`cordis.patch.yml` 插入行、Host 半边空实现
-- 事件适配思路：`sessions.binding().eventSource` 的瞬时事件 + 持久事件组合读数
-- 单文件 `client.js` 的构建方式（模块加载器工厂 + 源码片段拼接）
-
-### 我们改了/加了什么
-
-| 方向 | 改动 | 为什么 |
-|---|---|---|
-| **语言** | 面板标题、表头、状态、相位全部中文化，仅保留 `TOKEN`/`ID` 等专有词与 4px 微码 | 原版全英文，中文用户阅读成本高 |
-| **语义层级** | 从「一个会话一个光环」改为**环带分段 = 工作区、段内属于该工作区** | 单会话视角信息太少；工作区才是人理解系统的单位 |
-| **事件消费** | 只读事件的**时间形状**（类型/时刻/结果），不读轨迹投影 | 避免依赖宿主内部投影 schema，升级不易碎 |
-| **状态机** | run/idle/void 三态 + 900ms 标量缓动 + 空闲自动运镜 | 原版装饰节奏与"系统是否在干活"无关 |
-| **构图** | 按面板视口重设 `scale`/`centerY`，固定机位（运行态） | 原版按 16:9 全屏设计，嵌进侧栏旁会失衡 |
-| **交互** | 会话行 → DOM 抽屉；canvas 不承载文字与点击 | canvas 内做不了可访问性与锐利文字 |
-| **工程** | 场景跑在 iframe 中隔离 CSS；等价宿主工装 `lab/host.html` 可离线验证 | 原版会污染宿主样式，且难以回归测试 |
-
-## 6. 结构与构建
-
-```
-dsh-workflow-monitor/
-├─ package.json          # bundle 清单 + dsh.client
-├─ cordis.patch.yml      # 插入 workflow-monitor 行
-├─ index.js              # Host 半边（空实现，仅为让 bundle 可激活）
-├─ client.js             # 构建产物（浏览器唯一加载的文件，勿手改）
-├─ build.mjs             # 拼接 src/*.js 并把场景 HTML 内联成字符串
-├─ src/
-│  ├─ scene.html         # 场景（原作 lab.html 的改编版，iframe 内运行）
-│  ├─ bridge.js          # 遥测适配：会话/工作区/事件流 → 快照
-│  └─ mount.js           # 插槽注册（sidebar.panellist + main）、iframe 宿主
-├─ lab/host.html         # 等价宿主工装（假 module loader + 假 store）
-├─ tools/                # asar 提取、截图指纹
-└─ docs/preview.png
-```
+## 6. 构建与自检
 
 ```bash
 node build.mjs && node --check client.js
 ```
 
-改完 `src/` 后：重新 `install_bundle`（本地 junction 安装时刷新页面即可）。
+⚠️ `node --check client.js` **检查不到内联在 scene.html 里的脚本**。场景代码要单独验：
 
-离线验证（无需 DSH）：
+```bash
+# 抽出 <script> 内容后
+node --check scene-inline.mjs
+```
+
+离线预览（无需 DSH）：
 
 ```bash
 python -m http.server 8791 --bind 127.0.0.1 --directory .
-# 打开 http://127.0.0.1:8791/lab/host.html?mode=run|idle|void
+# http://127.0.0.1:8791/lab/host.html?mode=run|idle|void&mock=history
 ```
 
-### 历史矩阵的数据路径
+## 7. 借鉴与改进
 
-「指标矩阵」的每一格是真实事件，不是动画：
+**借鉴自 HALOFLUX（Ryder191）**：旋转数据墙、环带微面板、白色粒子爆流、细线蛛网、扫描线暗角、镜头推拉；`src/scene.html` 是其 `lab.html` 的改编版。
 
-1. 会话日志 `~/.dsh/sessions/<workspace>/session-<id>/session.v4.jsonl.zstd` 是**拼接的 zstd 帧**（每次追加写一帧），Node 的一次性解压与流式解压都只返回第一帧；
-2. `host/history.mjs` 按 zstd 魔数 `28 B5 2F FD` 切帧后逐帧解压（实测 3454 帧 → 5792 条事件，2.3 秒）；
-3. 按 30 分钟切桶，聚合成「会话 × 28 列 = 14 小时」；
-4. Host 每 30 秒缓存一次，通过 `ctx.webServer.register({ kind: 'exact', path: '/workflow-monitor/history', handler })` 提供 JSON；
-5. 前端每 30 秒 `fetch('/workflow-monitor/history')`，有数据就渲染真桶，没有则退回会话的 `lastActive` 单点标记。
+**借鉴自 dsh-haloflux（Ke-wood）**：DSH 插件形态（`dsh.bundle` + `dsh.client` + `cordis.patch.yml`）、事件适配思路、单文件 `client.js` 构建方式。
 
-> **架构说明**：原计划用 `TypertRemoteService` + `@Remote({mode:'stream'})` 暴露一条流。实测 `ctx.webServer` 的具名路由更简单——不需要给插件引入 TypeScript 构建链与装饰器，且同样是宿主官方通道。代价是轮询而非推送（30 秒一次，对半小时粒度的数据没有意义差别）。
+**我们改了什么**
 
-### 用量与估算金额
+| 方向 | 改动 |
+|---|---|
+| 语言 | 面板标题/表头/状态全中文化；4px 微码保留拉丁（中文在 4px 不可读） |
+| 语义 | 从「一会话一光环」改为「环带按工作区分段」；矩阵按会话 × 时间 |
+| 保图案换驱动 | 差异场、粒子流场都**不动几何/动效**，只把驱动量换成真实指标 |
+| 数据层 | 新增 Host 半边：zstd 分帧读日志、42 小时活动桶、内存、用量聚合 |
+| 三态机 | run/idle/void + 900ms 标量缓动 + 空闲自动运镜；`camera` 由状态机独占 |
+| 交互 | 会话行 → DOM 抽屉；canvas 不承载可读文字与点击 |
+| 清理 | 移除原作的 BGM、56 参数控制台、流体力学假公式与假按钮，改为真实状态灯 |
 
-Host 侧还会从同一批日志里聚合 `assistant/message` 的 `usage`：
-
-- **今日**：input / output / cacheRead / 请求数，见顶部 KPI「今日 tokens」
-- **近 7 天**：逐日请求与 token 量
-- **各模型**：按输出 token 排序的前 6 名（日志里没有模型名时归入 `unknown`）
-
-**金额是可选的。** 把 `prices.json` 填上你供应商的实际单价（每百万 token，四档：`input` / `cacheMiss` / `cacheHit` / `output`），KPI 就会从「今日 tokens」变成「今日消耗 ¥x.xx」：
-
-```json
-{
-  "deepseek-chat": { "input": 2, "cacheMiss": 2, "cacheHit": 0.5, "output": 8 }
-}
-```
-
-计算公式与社区用量插件同口径：`cost = (未命中 × cacheMiss + 命中 × cacheHit + 输出 × output) / 1e6`。
-**价目表为空时不显示金额**——宁可显示 token，也不编造一个价格。
-
-> 路由名带版本（`/workflow-monitor/usage-v2`）：宿主的具名路由在插件重载时不会自动释放，改路由名是避开上一代注册的稳妥做法。
-
-## 7. 已知限制
+## 8. 已知限制
 
 - 场景在 iframe 中：同源才能直接调用 `contentWindow.__HF`，否则回退 `postMessage`
-- 环上 4px 微文字只放拉丁短码，中文在该字号不可读
-- 只订阅**活跃会话**的事件流；其他会话仅贡献计数与状态
-- 事件流目前每 600ms 全量重扫 `entries`，超长会话应改增量游标（待优化）
-- 依赖宿主内部约定（`sidebar.panellist` / `main` / 标准 props）。DSH 升级后若白屏，先查这里
+- 环上 4px 微面板**标题**真实，块内容是随机生成（唯一未接真数据的部分）
+- 宿主路由名带版本（`usage-v2`）：宿主不会在插件重载时释放旧路由，改路径是绕开残留注册的办法
+- 依赖宿主内部约定（`sidebar.panellist` / `main` / 标准 props / `webServer.register`），DSH 升级后若白屏先查这里
+- 内存为**全机占用**，非本进程占用
 
-## 8. 致谢
+## 9. 致谢
 
 - **HALOFLUX** — Ryder191（RYDER CODE / Ms MAIKEBAIs CAT），<https://github.com/Ryder191/haloflux>
 - **dsh-haloflux** — [@Ke-wood](https://github.com/Ke-wood)，<https://github.com/Ke-wood/dsh-haloflux>
-- DeepSeek Harness 的插槽与遥测接口
 
-## 9. 许可
+## 10. 许可
 
-PolyForm Noncommercial License 1.0.0（继承自 HALOFLUX）。
-非商业使用免费；**任何商业用途均被禁止**。再分发须保留 `LICENSE` 与 `NOTICE` 中的署名。
+PolyForm Noncommercial License 1.0.0（继承自 HALOFLUX）。非商业使用免费；**禁止任何商业用途**。再分发须保留 `LICENSE` 与 `NOTICE`。
