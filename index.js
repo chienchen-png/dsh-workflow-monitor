@@ -10,9 +10,11 @@
  * an unknown shape leaves the plugin inert instead of breaking activation.
  */
 import { aggregate } from './host/history.mjs';
+import { usageAggregate, loadPrices } from './host/usage.mjs';
 
 const ROUTE = 'workflow-monitor/history';
 const CACHE_MS = 30 * 1000;
+const PRICES = new URL('./prices.json', import.meta.url);
 
 let cache = { at: 0, body: null };
 
@@ -20,6 +22,8 @@ function payload() {
   const now = Date.now();
   if (cache.body && now - cache.at < CACHE_MS) return cache.body;
   const rows = aggregate({ now });
+  let usage = null;
+  try { usage = usageAggregate({ now, prices: loadPrices(PRICES) }); } catch { usage = null; }
   cache = {
     at: now,
     body: JSON.stringify({
@@ -27,6 +31,7 @@ function payload() {
       bucketMs: 30 * 60 * 1000,
       columns: 28,
       rows: rows.map((r) => ({ id: r.id, buckets: r.buckets, last: r.last, total: r.total })),
+      usage,
     }),
   };
   return cache.body;

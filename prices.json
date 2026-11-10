@@ -1,0 +1,5 @@
+{
+  "_comment": "每百万 token 的单价。填入你的供应商实际价格后，『今日消耗』会从 token 数变为金额（估算）。留空则显示 token。",
+  "_fields": { "input": "未命中缓存的输入", "cacheMiss": "未命中（优先于 input）", "cacheHit": "缓存命中输入", "output": "输出" },
+  "_currency": "CNY"
+}

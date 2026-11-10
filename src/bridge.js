@@ -156,7 +156,9 @@ const HalofluxBridge = (() => {
         { k: 'TOKEN/S', v: String(Math.round(tokens)), pct: Math.min(1, tokens / 400), state: tokens > 0 ? 'live' : 'off' },
         { k: '上下文', v: Math.round(ctxFrac * 100) + '%', pct: ctxFrac, state: ctxFrac > 0 ? 'on' : 'off' },
         { k: '缓存', v: Math.round(cacheHit * 100) + '%', pct: cacheHit, state: cacheHit > 0 ? 'on' : 'off' },
+        todayKpi(input.history && input.history.usage),
       ],
+      usage: (input.history && input.history.usage) || null,
       requests: input.requests || [],
       status: {
         big: running + ' / ' + rows + ' 会话 · ' + (rows - running) + ' 空闲',
@@ -211,6 +213,22 @@ const HalofluxBridge = (() => {
    * selectors are answered from an empty shape instead of throwing.
    */
   const HISTORY_URL = '/workflow-monitor/history';
+
+  /** Today's spend as a KPI: money when the price table covers the day, tokens otherwise. */
+  function todayKpi(usage) {
+    if (!usage || !usage.today) return { k: '今日消耗', v: '—', pct: 0 };
+    const t = usage.today;
+    const tok = (t.input || 0) + (t.output || 0) + (t.cacheRead || 0);
+    const short = tok >= 1e6 ? (tok / 1e6).toFixed(2) + 'M' : tok >= 1e3 ? Math.round(tok / 1e3) + 'k' : String(tok);
+    const money = typeof t.cost === 'number' ? '¥' + t.cost.toFixed(2) : null;
+    return {
+      k: money ? '今日消耗' : '今日 tokens',
+      v: money || short,
+      pct: Math.min(1, tok / 5e6),
+      state: tok > 0 ? 'on' : 'off',
+      tone: money ? 'pink' : '',
+    };
+  }
 
   function useTelemetry(props) {
     const useSessions = props && typeof props.useSessions === 'function' ? props.useSessions : inert(EMPTY_LIST);
