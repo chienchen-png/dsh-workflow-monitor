@@ -24,18 +24,39 @@ canvas 只负责氛围，可读信息全部是 DOM。
 
 ## 2. 安装
 
+三种方式，任选其一。装完**刷新页面**，左侧导航出现「监控大屏」入口即成功。
+
+### 方式 A：让 AI 帮你装（推荐，不用敲命令）
+
+把下面这句话原样发给 DeepSeek Harness 的对话框：
+
+> 请帮我安装这个插件：`https://github.com/chienchen-png/dsh-workflow-monitor`。
+> 把它克隆到本机任意目录，然后用 `plugin_manager` 的 `install_bundle` 指向该目录安装。
+> 装完告诉我要不要刷新页面、以及左侧导航里入口叫什么名字。
+
+AI 会自己克隆、安装、并告诉你下一步。
+
+### 方式 B：从 GitHub 直接装
+
+```text
+dsh plugin --profile desktop add github:chienchen-png/dsh-workflow-monitor
+```
+
+### 方式 C：本地目录装
+
 ```text
 plugin_manager install_bundle  target=<本目录绝对路径>
 ```
 
-安装后刷新页面，左侧导航出现入口即成功。卸载：
+卸载：
 
 ```text
 plugin_manager remove_bundle  target=dsh-workflow-monitor
 ```
 
-实测于 DeepSeek Harness Desktop `2.0.22-next`（内核 `@deepseek-ai/dsh-* 0.2.2-rc.1`）。
-
+> **暂未发布到 npm**，所以不在社区市场的搜索目录里。GitHub 安装与本地安装都完全可用。
+>
+> 实测于 DeepSeek Harness Desktop `2.0.22-next`（内核 `@deepseek-ai/dsh-* 0.2.2-rc.1`）。
 ## 3. 视觉语义
 
 | 元素 | 含义 |
