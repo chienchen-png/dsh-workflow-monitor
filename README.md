@@ -32,7 +32,7 @@ canvas 只负责氛围，可读信息全部是 DOM。
 
 > 请帮我安装这个插件：`https://github.com/chienchen-png/dsh-workflow-monitor`。
 > 把它克隆到本机任意目录，然后用 `plugin_manager` 的 `install_bundle` 指向该目录安装。
-> 装完告诉我要不要刷新页面、以及左侧导航里入口叫什么名字。
+> 装完删除所下载的冗余文件，告诉我要不要刷新页面、以及左侧导航里入口叫什么名字。
 
 AI 会自己克隆、安装、并告诉你下一步。
 
