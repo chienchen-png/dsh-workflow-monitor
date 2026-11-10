@@ -172,6 +172,7 @@ const HalofluxBridge = (() => {
       zones: groups.map((g, i) => ({ code: 'W' + (i + 1), name: g.name })),
       // Flat session index for the activity matrix: running now, plus "busy"
       // (the followed session had an event in the last few seconds).
+      activity: Math.max(0.15, Math.min(1, 0.15 + (running > 0 ? 0.55 : 0) + (last.at && now - last.at < 6000 ? 0.3 : 0))),
       counters: {
         tokens: Math.round(tokens),
         events: input.events || 0,

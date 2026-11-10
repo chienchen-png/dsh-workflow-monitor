@@ -1381,7 +1381,9 @@ function resizePanels() {
 let T = 0;
 /* 粒子流场：形状不变，只让流场时钟由真实吞吐驱动 */
 let HF_FLOW_T = 0, HF_BURST = 0, HF_EV_SEEN = -1;
+let HF_ACT = null;
 function hfActivity() {
+  if (HF_ACT != null) return HF_ACT;
   const last = HF_VAL && HF_VAL.last;
   if (!last) return 0.15;
   const tok = Math.min(1, (last[0] || 0) / 60);
