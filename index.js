@@ -73,7 +73,12 @@ export function apply(ctx) {
     // Host route descriptor: { kind: 'exact' | 'prefix', path, handler | resource }.
     // Duplicate (kind, path) throws by design, so exact+path is the contract.
     try {
-      server.register({ kind: 'exact', path: '/' + ROUTE, handler });
+      const dispose = server.register({ kind: 'exact', path: '/' + ROUTE, handler });
+      // Route registration outlives a plain reload: bind the disposer to the
+      // plugin effect so a re-activation never collides with its own predecessor.
+      if (typeof dispose === 'function' && typeof ctx.effect === 'function') {
+        ctx.effect(() => () => { try { dispose(); } catch { /* already gone */ } });
+      }
       log('host: HTTP route registered ->', '/' + ROUTE);
       return;
     } catch (e) {
