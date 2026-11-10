@@ -1417,14 +1417,30 @@ function drawAdv(dt) {
   x.fillStyle = 'rgba(14,15,18,0.22)'; x.fillRect(0, 0, w, h);
   x.fillStyle = 'rgba(120,125,135,.25)';
   for (let i = 6; i < w; i += 12) for (let j = 6; j < h; j += 12) x.fillRect(i, j, 1, 1);
-  x.strokeStyle = 'rgba(235,238,244,' + (0.45 + 0.5 * act).toFixed(2) + ')'; x.lineWidth = 0.8 + HF_BURST * 0.5; x.beginPath();
+  // 三态差异：粒子密度 + 拖影长度 + 亮度
+  const density = 0.32 + 0.68 * act, trail = 1 + act * 3.4;
+  x.strokeStyle = 'rgba(235,238,244,' + (0.30 + 0.62 * act).toFixed(2) + ')';
+  x.lineWidth = 0.7 + 0.5 * act + HF_BURST * 0.6; x.beginPath();
+  let pi = 0;
   for (const p of advP) {
+    pi++;
+    if ((pi % 100) / 100 > density) continue;
     const a = flow(p.x, p.y), sp = 22 * dt * (0.55 + act) * (1 + HF_BURST * 0.6), nx = p.x + Math.cos(a) * sp, ny = p.y + Math.sin(a) * sp;
-    x.moveTo(p.x, p.y); x.lineTo(nx + Math.cos(a) * 2, ny + Math.sin(a) * 2);
+    x.moveTo(p.x, p.y); x.lineTo(nx + Math.cos(a) * 2 * trail, ny + Math.sin(a) * 2 * trail);
     p.x = nx; p.y = ny; p.l -= dt;
     if (p.l < 0 || p.x < 0 || p.x > w || p.y < 0 || p.y > h) { p.x = rnd() * w; p.y = rnd() * h; p.l = rr(1, 4); }
   }
   x.stroke();
+  if (HF_BURST > 0.05) {            // 工具调用：中心放射短须
+    x.strokeStyle = 'rgba(240,166,198,' + (HF_BURST * 0.75).toFixed(2) + ')'; x.lineWidth = 1.1; x.beginPath();
+    for (let k = 0; k < 14; k++) {
+      const a2 = (k / 14) * Math.PI * 2 + T * 0.6;
+      const r0 = 6 + (1 - HF_BURST) * 26, r1 = r0 + 10 + HF_BURST * 26;
+      x.moveTo(w / 2 + Math.cos(a2) * r0, h / 2 + Math.sin(a2) * r0);
+      x.lineTo(w / 2 + Math.cos(a2) * r1, h / 2 + Math.sin(a2) * r1);
+    }
+    x.stroke();
+  }
 }
 // 假控件轮播已移除：面板现在由真实遥测驱动
 
