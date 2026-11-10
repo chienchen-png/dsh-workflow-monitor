@@ -166,6 +166,19 @@ const HalofluxBridge = (() => {
       keys,
       phase,
       zones: groups.map((g, i) => ({ code: 'W' + (i + 1), name: g.name })),
+      // Flat session index for the activity matrix: running now, plus "busy"
+      // (the followed session had an event in the last few seconds).
+      sessionsIndex: groups.reduce((acc, g) => {
+        for (const s2 of g.sessions) {
+          acc.push({
+            id: s2.id,
+            label: rowTitle(s2, s2.id).slice(0, 3),
+            running: isRunning(s2),
+            busy: s2.id === input.activeSessionId && last.at > 0 && now - last.at < 4000,
+          });
+        }
+        return acc;
+      }, []).slice(0, 11),
       // Static framing only. `camera` is deliberately absent: the scene's mode
       // machine owns it (fixed while running, touring while idle), and a host
       // push would otherwise pin it every snapshot.

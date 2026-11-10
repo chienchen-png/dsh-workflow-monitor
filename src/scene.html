@@ -1469,8 +1469,47 @@ function drawVal() {
 }
 
 const IDX = Array.from({ length: 11 }, () => Array.from({ length: 28 }, () => rnd()));
+/* real-activity matrix: one row per session, one column per second (28s window).
+   The scan column is kept — it is the "flow" cue, just now it sweeps real cells. */
+let HF_IDX = null, HF_IDX_LAST = -99;
+function hfDrawIdxLive(x, w, h) {
+  if (!HF_IDX || !HF_IDX.ids || !HF_IDX.ids.length) return false;
+  x.clearRect(0, 0, w, h);
+  x.font = `600 6.5px ${FONT}`; x.textBaseline = 'middle';
+  const cols = 28, rows = Math.min(11, HF_IDX.ids.length);
+  const lx = 24, rx = 34, cw = (w - lx - rx) / cols, ch = h / rows;
+  const scan = Math.floor((T * 6) % cols);
+  if (T - HF_IDX_LAST >= 1) {
+    HF_IDX_LAST = T;
+    const st = HF_IDX.state || {};
+    for (const id of HF_IDX.ids) {
+      const row = HF_IDX.rows[id] || (HF_IDX.rows[id] = []);
+      row.push(0);
+      while (row.length > cols) row.shift();
+      const cur = st[id] || {};
+      row[row.length - 1] = cur.busy ? 0.95 : (cur.running ? 0.55 : 0);
+    }
+  }
+  for (let j = 0; j < rows; j++) {
+    const id = HF_IDX.ids[j];
+    const row = HF_IDX.rows[id] || [];
+    const cur = (HF_IDX.state || {})[id] || {};
+    x.fillStyle = '#6b6f78';
+    x.fillText(String(cur.label || ('M' + String(j + 1).padStart(2, '0'))).slice(0, 3), 0, j * ch + ch / 2);
+    for (let i = 0; i < cols; i++) {
+      const v = row[row.length - cols + i] || 0;
+      x.fillStyle = v > 0.86 ? '#f0a6c6' : v > 0.5 ? 'rgba(240,166,198,.45)' : v > 0.3 ? '#4a4e56' : '#1c1e23';
+      if (i === scan) x.fillStyle = v > 0.3 ? '#ffffff' : '#3a3e46';
+      x.fillRect(lx + i * cw, j * ch + 1, cw - 1, ch - 2);
+    }
+    x.fillStyle = cur.running ? '#f0a6c6' : '#9a9ea7';
+    x.fillText(cur.running ? '运行' : '空闲', w - rx + 4, j * ch + ch / 2);
+  }
+  return true;
+}
 function drawIdx() {
   const x = cIdx.x, w = cIdx.w, h = cIdx.h;
+  if (hfDrawIdxLive(x, w, h)) return;
   x.clearRect(0, 0, w, h);
   x.font = `600 6.5px ${FONT}`; x.textBaseline = 'middle';
   const lx = 24, rx = 34, rows = 11, cols = 28, cw = (w - lx - rx) / cols, ch = h / rows;
@@ -1942,6 +1981,15 @@ window.__HF = (function () {
       const changed = !HF_ZONES || HF_ZONES.length !== s.zones.length;
       HF_ZONES = s.zones;
       if (changed) { rebuildQ.add('slots'); applyRebuilds(); }
+    }
+    if (s.sessionsIndex) {
+      const idx = { ids: [], rows: (HF_IDX && HF_IDX.rows) || {}, state: {} };
+      for (const it of s.sessionsIndex.slice(0, 11)) {
+        if (!it || !it.id) continue;
+        idx.ids.push(it.id);
+        idx.state[it.id] = { running: !!it.running, busy: !!it.busy, label: it.label || '' };
+      }
+      HF_IDX = idx;
     }
     if (s.keys && s.keys.length) HF_KEYS = s.keys;
     if (s.phase) { setText($('chkK'), s.phase.k); setText($('chkV'), s.phase.v); }
