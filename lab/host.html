@@ -122,7 +122,7 @@
 (function(){
   if (new URLSearchParams(location.search).get('mock') !== 'history') return;
   var f = document.querySelector('iframe');
-  var buckets = function(seed){ var a=[]; for(var i=0;i<28;i++){ a.push(((i*seed)%7===0)?12:((i*seed)%3===0?3:0)); } return a; };
+  var buckets = function(seed){ var a=[]; for(var i=0;i<28;i++){ var age=(27-i)/27; var dens=age*age; var v=0; if(((i*seed)%5)!==0) v=Math.round(2+dens*22); if(age<0.35&&((i+seed)%3)!==0) v=0; a.push(v); } return a; };
   var snap = {
     brand:'智能体实时运行态势', sub:'DeepSeek Harness · 本机', clock:'02:20:00', mode:'run',
     kpis:[{k:'工作区',v:'2',pct:.3,state:'on'},{k:'会话',v:'4',pct:.3,state:'on'},{k:'运行中',v:'2',pct:.3,tone:'pink',state:'on'},
