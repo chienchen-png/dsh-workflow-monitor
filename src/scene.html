@@ -1384,6 +1384,12 @@ let HF_FLOW_T = 0, HF_BURST = 0, HF_EV_SEEN = -1;
 let HF_ACT = null;
 function hfActivity() {
   if (HF_ACT != null) return HF_ACT;
+  // 本地兜底：只要 sessionsIndex 里有 running，就按"生成中"驱动
+  if (HF_IDX && HF_IDX.ids && HF_IDX.ids.length) {
+    let run = 0;
+    for (const id of HF_IDX.ids) if ((HF_IDX.state[id] || {}).running) run++;
+    return Math.max(0.15, Math.min(1, 0.15 + (run > 0 ? 0.55 : 0)));
+  }
   const last = HF_VAL && HF_VAL.last;
   if (!last) return 0.15;
   const tok = Math.min(1, (last[0] || 0) / 60);
@@ -1399,6 +1405,9 @@ function drawAdv(dt) {
   if (window.__hfBtns && window.__hfBtns.length === 3) {
     const st = HF_BURST > 0.15 ? 1 : (act > 0.35 ? 0 : 2);
     for (let bi = 0; bi < 3; bi++) window.__hfBtns[bi].classList.toggle('on', bi === st);
+    document.body.dataset.act = act.toFixed(2);
+    document.body.dataset.st = String(st);
+    if (T - (window.__hfStateT || 0) > 0.5) { window.__hfStateT = T; try { parent.postMessage({ hf: 'state', act: act, st: st, burst: HF_BURST }, '*'); } catch (e) {} }
   }
   HF_FLOW_T += dt * (0.25 + 1.9 * act);
   const ev = HF_VAL && HF_VAL.counters ? (HF_VAL.counters.events || 0) : 0;

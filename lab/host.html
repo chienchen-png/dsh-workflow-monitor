@@ -126,7 +126,7 @@
     kpis:[{k:'工作区',v:'2',pct:.3,state:'on'},{k:'会话',v:'4',pct:.3,state:'on'},{k:'运行中',v:'2',pct:.3,tone:'pink',state:'on'},
           {k:'TOKEN/S',v:'120',pct:.3,state:'live'},{k:'上下文',v:'12%',pct:.12,state:'on'},{k:'缓存',v:'68%',pct:.68,state:'on'},{k:'今日 tokens',v:'180k',pct:.4,state:'on'}],
     status:{big:'2 / 4 会话 · 2 空闲', small:'更新 02:20:00'},
-    phase:{k:'生成中', v:'120 tok/s'},
+    phase:{k:'生成中', v:'120 tok/s'}, activity:0.7,
     sessionsIndex:[{id:'s1',label:'Ha1',running:true,busy:true,lastActive:Date.now()-3600e3},
                    {id:'s2',label:'B站博',running:false,busy:false,lastActive:Date.now()-7200e3},
                    {id:'s3',label:'QQ对话',running:true,busy:false,lastActive:Date.now()-1800e3},
@@ -139,5 +139,6 @@
 })();
 window.__ERR=1;window.addEventListener('error',function(e){var d=document.getElementById('diag');if(d)d.textContent='ERR: '+(e.message||e.error);});
 </script>
+<script>window.addEventListener('message',function(e){var d=e.data;if(!d||d.hf!=='state')return;var el=document.getElementById('diag');if(el)el.textContent='SCENE act='+d.act.toFixed(2)+' st='+d.st+' burst='+d.burst.toFixed(2);});</script>
 </body>
 </html>
