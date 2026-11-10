@@ -155,7 +155,9 @@ const HalofluxBridge = (() => {
         { k: '运行中', v: String(running), pct: Math.min(1, running / 6), tone: running > 0 ? 'pink' : '', state: running > 0 ? 'on' : 'off' },
         { k: 'TOKEN/S', v: String(Math.round(tokens)), pct: Math.min(1, tokens / 400), state: tokens > 0 ? 'live' : 'off' },
         { k: '上下文', v: Math.round(ctxFrac * 100) + '%', pct: ctxFrac, state: ctxFrac > 0 ? 'on' : 'off' },
+        { k: '缓存', v: Math.round(cacheHit * 100) + '%', pct: cacheHit, state: cacheHit > 0 ? 'on' : 'off' },
       ],
+      requests: input.requests || [],
       status: {
         big: running + ' / ' + rows + ' 会话 · ' + (rows - running) + ' 空闲',
         small: '更新 ' + clock(now) + ' · ' + groups.map((g) => g.name.split(/[\\/]/).pop()).join(' · '),
@@ -228,6 +230,8 @@ const HalofluxBridge = (() => {
     const [feed, setFeed] = React.useState([]);
     const [code, setCode] = React.useState([]);
     const [history, setHistory] = React.useState(null);
+    const [cacheHit, setCacheHit] = React.useState(0);
+    const reqsRef = React.useRef([]);
     const [tokens, setTokens] = React.useState(0);
     const [ctxFrac, setCtxFrac] = React.useState(0);
     const seenRef = React.useRef({ key: '', count: 0 });
@@ -295,8 +299,15 @@ const HalofluxBridge = (() => {
             if (usage && num(usage.inputTokens) != null) {
               const inTok = num(usage.inputTokens) || 0;
               const outTok = num(usage.outputTokens) || 0;
-              setCtxFrac(Math.min(1, inTok / 128000));
-              setTokens(Math.round(outTok / Math.max(1, 1)));
+              const cached = num(usage.cacheReadTokens) || 0;
+              const frac = Math.min(1, inTok / 128000);
+              setCtxFrac(frac);
+              setTokens(Math.round(outTok));
+              const hit = inTok + cached > 0 ? cached / (inTok + cached) : 0;
+              setCacheHit(hit);
+              const q = reqsRef.current;
+              q.push({ hit, ctx: frac, out: outTok });
+              while (q.length > 22) q.shift();
             }
           }
         }
@@ -331,11 +342,11 @@ const HalofluxBridge = (() => {
 
     return React.useMemo(() => build({
       list, workspaces, statuses, feed, code, tokens, ctxFrac, last: lastRef.current,
-      history,
+      history, cacheHit, requests: reqsRef.current.slice(-22),
       events: evRef.current, lastLat: latRef.current,
       step: stepRef.current, turn: turnRef.current,
       activeSessionId: activeId, now: Date.now(),
-    }), [list, workspaces, statuses, feed, code, tokens, ctxFrac, activeId, history]);
+    }), [list, workspaces, statuses, feed, code, tokens, ctxFrac, activeId, history, cacheHit]);
   }
 
   return { useTelemetry, build, groupByWorkspace, clock };

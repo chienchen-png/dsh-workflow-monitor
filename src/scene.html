@@ -170,6 +170,7 @@ body[data-hf="live"] .ag:hover .rl{color:var(--white)}
     <div class="kpi pink"><div class="k">运行中</div><div class="v pink" id="k2">0</div><div class="seg"><i></i></div></div>
     <div class="kpi"><div class="k">TOKEN/S</div><div class="v" id="k3">0</div><div class="seg"><i></i></div></div>
     <div class="kpi"><div class="k">上下文</div><div class="v" id="k4">0%</div><div class="seg"><i></i></div></div>
+    <div class="kpi"><div class="k">缓存</div><div class="v" id="k5">0%</div><div class="seg"><i></i></div></div>
   </div>
   <div class="status-zone">
     <div class="clock" id="clk">--:--:--</div>
@@ -1415,8 +1416,63 @@ function drawAdv(dt) {
 }
 setInterval(() => { const b = document.querySelectorAll('#advBtns span'); const i = [...b].findIndex(s => s.classList.contains('on')); b[i].classList.remove('on'); b[(i + 1) % 3].classList.add('on'); }, 1400);
 
+/* reference / difference field — real request telemetry.
+   left: cache-hit band per request; right: context pressure band per request;
+   bottom: output-token histogram. Falls back to the decorative field when the
+   host has not delivered a session with usage yet. */
+let HF_REQ = null;
+function hfDrawDiffLive(x, w, h) {
+  if (!HF_REQ || !HF_REQ.length) return false;
+  x.clearRect(0, 0, w, h);
+  x.font = `600 7px ${FONT}`; x.textBaseline = 'top';
+  const gap = 8, mw = (w - gap) / 2, mh = h * 0.68, cols = 22, rows = 13;
+  const cw = mw / cols, ch = (mh - 10) / rows;
+  const reqs = HF_REQ.slice(-cols);
+  x.fillStyle = '#6b6f78';
+  x.fillText('缓存命中', 0, 0);
+  x.fillText('上下文压力', mw + gap, 0);
+  for (let j = 0; j < rows; j++) {
+    const band = 1 - (j + 1) / rows;         // row 0 = highest band
+    for (let i = 0; i < cols; i++) {
+      const r = reqs[i];
+      if (!r) continue;
+      const hit = r.hit >= band && r.hit < band + 1 / rows;
+      const ctx = r.ctx >= band && r.ctx < band + 1 / rows;
+      if (hit) {
+        const g = 120 + Math.round(r.hit * 130);
+        x.fillStyle = r.hit > 0.6 ? `rgb(${g - 20},${g},${g})` : `rgb(${g},${g},${g + 6})`;
+        x.fillRect(i * cw, 10 + j * ch, cw - 0.6, ch - 0.6);
+      } else if (r) {
+        x.fillStyle = '#1c1e23';
+        x.fillRect(i * cw, 10 + j * ch, cw - 0.6, ch - 0.6);
+      }
+      if (ctx) {
+        x.fillStyle = r.ctx > 0.82 ? 'rgba(240,166,198,.85)' : `rgb(${30 + Math.round(r.ctx * 150)},${30 + Math.round(r.ctx * 150)},${36 + Math.round(r.ctx * 150)})`;
+        x.fillRect(mw + gap + i * cw, 10 + j * ch, cw - 0.6, ch - 0.6);
+      } else {
+        x.fillStyle = '#1c1e23';
+        x.fillRect(mw + gap + i * cw, 10 + j * ch, cw - 0.6, ch - 0.6);
+      }
+    }
+  }
+  // output-token histogram under the grids
+  const hb = new Array(28).fill(0);
+  for (const r of reqs) {
+    const idx = Math.min(27, Math.max(0, Math.round(Math.log10(Math.max(1, r.out)) * 7)));
+    hb[idx]++;
+  }
+  const top = mh + 6, bh = h - top - 6, max = Math.max(1, ...hb);
+  for (let i = 0; i < 28; i++) {
+    const bw = w / 28;
+    const v = hb[i] / max;
+    x.fillStyle = i === 27 ? 'rgba(240,166,198,.8)' : 'rgba(232,235,242,.55)';
+    x.fillRect(i * bw, top + bh - v * bh, bw - 1.4, Math.max(0.8, v * bh));
+  }
+  return true;
+}
 function drawDiff() {
   const x = cDiff.x, w = cDiff.w, h = cDiff.h;
+  if (hfDrawDiffLive(x, w, h)) return;
   x.clearRect(0, 0, w, h);
   x.font = `600 7px ${FONT}`; x.textBaseline = 'top';
   const gap = 8, mw = (w - gap) / 2, mh = h * 0.68, cols = 22, rows = 13, cw = mw / cols, ch = (mh - 10) / rows;
@@ -2055,6 +2111,7 @@ window.__HF = (function () {
       if (changed) { rebuildQ.add('slots'); applyRebuilds(); }
     }
     if (s.counters) HF_VAL = { counters: s.counters, buf: (HF_VAL && HF_VAL.buf) || null, prev: (HF_VAL && HF_VAL.prev) || null, max: (HF_VAL && HF_VAL.max) || null };
+    if (s.requests) HF_REQ = s.requests;
     if (s.history && Array.isArray(s.history.rows)) {
       const map = {};
       for (const r of s.history.rows) if (r && r.id && Array.isArray(r.buckets)) map[r.id] = r.buckets;
