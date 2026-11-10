@@ -240,21 +240,6 @@ const HalofluxBridge = (() => {
     };
   }
 
-  /** Today's spend as a KPI: money when the price table covers the day, tokens otherwise. */
-  function todayKpi(usage) {
-    if (!usage || !usage.today) return { k: '今日消耗', v: '—', pct: 0 };
-    const t = usage.today;
-    const tok = (t.input || 0) + (t.output || 0) + (t.cacheRead || 0);
-    const short = tok >= 1e6 ? (tok / 1e6).toFixed(2) + 'M' : tok >= 1e3 ? Math.round(tok / 1e3) + 'k' : String(tok);
-    const money = typeof t.cost === 'number' ? '¥' + t.cost.toFixed(2) : null;
-    return {
-      k: money ? '今日消耗' : '今日 tokens',
-      v: money || short,
-      pct: Math.min(1, tok / 5e6),
-      state: tok > 0 ? 'on' : 'off',
-      tone: money ? 'pink' : '',
-    };
-  }
 
   function useTelemetry(props) {
     const useSessions = props && typeof props.useSessions === 'function' ? props.useSessions : inert(EMPTY_LIST);

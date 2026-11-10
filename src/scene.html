@@ -188,14 +188,9 @@ body[data-hf="live"] .ag:hover .rl{color:var(--white)}
   <div class="stage" id="stageWrap">
     <canvas id="stage"></canvas>
     <div class="ov console">◱ 调参</div>
-    <div class="ov music" id="bgm">
-      <span class="mbtn" id="bgmBtn" title="开/关背景音乐（M 键）"><i class="eq"><b></b><b></b><b></b></i><em id="bgmTxt">BGM OFF</em></span>
-      <input type="range" id="bgmVol" min="0" max="100" step="1" value="60" title="音量">
-      <span class="mval" id="bgmVal">60</span>
-    </div>
-    <audio id="bgmAudio" data-src="audio/sw421k.mp3" loop preload="auto" playsinline></audio>
     <div class="ov chk" id="chk"><b id="chkK">等待数据</b><span id="chkV">—</span></div>
-    <div class="ov status"><div class="big" id="stBig">7 / 11 METHODS · 4 PENDING</div><div class="sm" id="stSmall">independent runs · shared event bus</div></div>
+    <div class="ov status"><div class="big" id="stBig">—</div><div class="sm" id="stSmall">—</div></div>
+    
   </div>
 
   <section class="panels">
@@ -1886,34 +1881,8 @@ document.addEventListener('keydown', e => {
    if it could not start on load. iOS ignores <audio>.volume, so there the level
    is driven through a Web Audio GainNode (http/https only).
    ========================================================= */
-(function initBGM() {
-  const KEY = 'paperlab.bgm.v1';
-  const au = document.getElementById('bgmAudio');
-  const box = document.getElementById('bgm');
-  const txt = document.getElementById('bgmTxt');
-  const vol = document.getElementById('bgmVol');
-  const val = document.getElementById('bgmVal');
-  const emb = document.getElementById('bgmData');
-  const TOUCH = matchMedia('(pointer: coarse)').matches;
-  if (emb && emb.textContent.trim()) {
-    try {
-      const bin = atob(emb.textContent.replace(/\s+/g, ''));
-      const buf = new Uint8Array(bin.length);
-      for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
-      au.src = URL.createObjectURL(new Blob([buf], { type: 'audio/mpeg' }));
-      emb.textContent = '';
-    } catch (e) { au.src = au.dataset.src; }
-  } else au.src = au.dataset.src;
-  au.setAttribute('playsinline', '');
-  let st = { on: true, vol: 60 };
-  try { st = { ...st, ...(JSON.parse(localStorage.getItem(KEY) || 'null') || {}) }; } catch (e) {}
-  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(st)); } catch (e) {} };
-  try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}   // iOS: play even with the silent switch on
+/* BGM 已移除：本项目不需要背景音乐 */
 
-  // volume path: element volume, or a GainNode where element volume is read-only (iOS).
-  // iOS / iPadOS always take the GainNode path instead of relying on the read-back test.
-  const IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-  const roVolume = IOS || (() => { try { au.volume = 0.5; const ro = Math.abs(au.volume - 0.5) > 0.01; au.volume = 1; return ro; } catch (e) { return true; } })();
   const AC = window.AudioContext || window.webkitAudioContext;
   const useWA = roVolume && !!AC && /^https?:$/.test(location.protocol);
   let ctx = null, gain = null;
@@ -1978,7 +1947,6 @@ document.addEventListener('keydown', e => {
     st.on = !st.on; save(); st.on ? play(true) : stop(); ui();
   }
 
-  document.getElementById('bgmBtn').addEventListener('click', e => { e.stopPropagation(); toggle(); });
   vol.addEventListener('input', () => {
     st.vol = +vol.value; save(); val.textContent = st.vol;
     cancelAnimationFrame(fadeRaf); if (playing()) setV(target());
