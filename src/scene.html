@@ -197,11 +197,11 @@ body[data-hf="live"] .ag:hover .rl{color:var(--white)}
     <div class="p"><h3>粒子流场</h3><canvas id="cAdv"></canvas>
       <div class="btns" id="advBtns"><span class="on">对流</span><span>投影</span><span>渲染</span></div></div>
     <div class="p"><h3>工具调用</h3><div class="code" id="code"></div></div>
-    <div class="p"><h3>参考 / 差异场</h3><canvas id="cDiff"></canvas><div class="cap">同一输入 · 局部差异 · 查看来源</div></div>
+    <div class="p"><h3>缓存命中 / 上下文</h3><canvas id="cDiff"></canvas><div class="cap">同一输入 · 局部差异 · 查看来源</div></div>
     <div class="p"><h3>工作区路由</h3><div class="routes" id="routes"></div><div class="cap">工作区 → 会话 → 运行状态</div></div>
     <div class="p"><h3>运行采样</h3><canvas id="cVal"></canvas><div class="cap">真实采样 · 每 1 秒</div></div>
     <div class="p"><h3>会话调度</h3><div class="agents" id="agents"></div><div class="cap">独立会话 / 共享事件总线</div></div>
-    <div class="p"><h3>指标矩阵</h3><canvas id="cIdx"></canvas><div class="cap">近 14 小时 · 每格 30 分钟</div></div>
+    <div class="p"><h3>会话活跃度</h3><canvas id="cIdx"></canvas><div class="cap">近 14 小时 · 每格 30 分钟</div></div>
   </section>
 </div>
 
@@ -1484,7 +1484,7 @@ function drawDiff() {
   const ctxUse = HFH ? (HFH[HFH.length - 1].ctx || 0) : 0;
   for (let m = 0; m < 2; m++) {
     const ox = m * (mw + gap);
-    x.fillStyle = '#6b6f78'; x.fillText(m ? 'IMPLEMENTATION' : 'REFERENCE', ox, 0);
+    x.fillStyle = '#6b6f78'; x.fillText(m ? '占用' : '命中', ox, 0);
     for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
       let v = 0.5 + (0.12 + 0.55 * hit) * Math.sin(i * 0.45 + T * (0.35 + 2.2 * hit)) * Math.cos(j * 0.5 - T * 0.5) + (0.08 + 0.3 * hit) * Math.sin((i + j) * 0.3 + T * (0.6 + hit));
       let err = 0;
@@ -1493,6 +1493,14 @@ function drawDiff() {
       x.fillStyle = err > 0.35 ? `rgba(240,166,198,${0.5 + err * 0.5})` : `rgb(${g},${g},${g + 4})`;
       x.fillRect(ox + i * cw, 10 + j * ch, cw - 0.6, ch - 0.6);
     }
+  }
+  if (HFH && HFH.length) {          // 有真实请求时，直方图显示输出 token 分布
+    hist.fill(0);
+    for (const r of HFH) {
+      const idx = Math.min(27, Math.max(1, Math.round(Math.log10(Math.max(1, r.out || 1)) * 9)));
+      hist[idx]++;
+    }
+    hist[0] = 1;                    // 保留原版首柱的基线观感
   }
   const by = mh + 4, bh = h - by, bw = w / hist.length;
   const mx = Math.max(...hist.slice(1), 1);
