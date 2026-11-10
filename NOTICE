@@ -1,0 +1,24 @@
+HALOFLUX Monitor for DeepSeek Harness
+=====================================
+
+This plugin embeds and adapts the HALOFLUX scene.
+
+Original work:
+  HALOFLUX — Copyright (c) 2026 Ryder191 (RYDER CODE / Ms MAIKEBAIs CAT)
+  https://github.com/Ryder191/haloflux
+  Licensed under the PolyForm Noncommercial License 1.0.0.
+
+Required Notice: "HALOFLUX by Ryder191 (RYDER CODE / Ms MAIKEBAIs CAT)" —
+https://github.com/Ryder191/haloflux
+
+Modifications (dsh-workflow-monitor):
+  - the scene is embedded in a DeepSeek Harness panel instead of a standalone page;
+  - background music, fullscreen toggling and the local-storage preset store are
+    removed from the shipped scene;
+  - the simulated instrument data is replaced by a live telemetry snapshot pushed
+    by the host plugin.
+
+This port is noncommercial only, under the same PolyForm Noncommercial License
+1.0.0. Redistribution and modification must keep this NOTICE and the LICENSE.
+
+No commercial use of any kind is permitted.

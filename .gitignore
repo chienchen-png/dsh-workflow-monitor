@@ -1,0 +1,16 @@
+# build output of the scene screenshot harness
+lab/*.png
+!docs/preview.png
+
+# local verification server
+.port
+
+# editors / OS
+.vscode/
+.idea/
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# deps (this package has none, but keep the door closed)
+node_modules/

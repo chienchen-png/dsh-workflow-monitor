@@ -1,0 +1,46 @@
+{
+  "name": "dsh-workflow-monitor",
+  "version": "0.1.0",
+  "description": "HALOFLUX telemetry console for DeepSeek Harness: a black-and-white instrument wall that renders live workspace and session telemetry as a rotating band of micro-panels, an event feed, agent dispatch and reference matrices.",
+  "license": "SEE LICENSE IN LICENSE",
+  "type": "module",
+  "engines": { "dsh": ">=0.2.2-rc.1" },
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "telemetry",
+    "canvas",
+    "visualization",
+    "haloflux"
+  ],
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-session",
+        "@deepseek-ai/dsh-client-ui-layout",
+        "@deepseek-ai/dsh-client-ui-sidebar"
+      ]
+    }
+  }
+}

@@ -1,0 +1,120 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>DSH panel harness</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #0b0c0f; }
+  /* Mimic the host panel viewport: no intrinsic height, flex child. */
+  .frame { display: flex; flex-direction: column; height: 100%; }
+  .bar { height: 44px; flex: 0 0 44px; background: #14161a; border-bottom: 1px solid #262a31;
+         color: #8b9099; font: 600 11px/44px Consolas, monospace; letter-spacing: .12em; padding: 0 14px; }
+  #slot { flex: 1 1 auto; min-height: 0; position: relative; }
+  #diag { position: fixed; right: 8px; bottom: 6px; color: #4b8; font: 11px/1.3 Consolas, monospace;
+          background: rgba(0,0,0,.7); padding: 3px 7px; border: 1px solid #2a3; z-index: 9; }
+</style>
+</head>
+<body>
+<div class="frame">
+  <div class="bar">DSH · PANEL HARNESS (equivalent host: slots + module loader)</div>
+  <div id="slot"></div>
+</div>
+<div id="diag">boot…</div>
+
+<script src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+<script>
+  // ---- minimal host stand-ins -------------------------------------------------
+  const React = window.React;
+  const registry = Object.create(null);
+  const slotLog = [];
+
+  window.__ModuleLoader__ = {
+    load(def) {
+      window.__PLUGIN_DEF__ = def;
+    },
+  };
+
+  function makeCtx() {
+    return {
+      slots: {
+        inject(name, cb) { slotLog.push('inject:' + name); cb(); },
+        register(spec, comp) {
+          const bucket = registry[spec.name] || (registry[spec.name] = new Map());
+          const key = spec.key != null ? spec.key : (spec.id != null ? spec.id : 'default');
+          bucket.set(key, { spec, comp });
+          slotLog.push('register:' + spec.name + '/' + key);
+          return () => bucket.delete(key);
+        },
+      },
+      get() { return undefined; },
+      inject() {},
+    };
+  }
+  // ---- load the built client --------------------------------------------------
+</script>
+<script src="../client.js"></script>
+<script>
+  (function boot() {
+    const def = window.__PLUGIN_DEF__;
+    if (!def) { document.getElementById('diag').textContent = 'NO PLUGIN DEFINITION'; return; }
+    const plugin = def.factory(function (name) {
+      if (name === 'react') return React;
+      throw new Error('harness has no module: ' + name);
+    });
+    plugin.apply(makeCtx());
+
+    const main = registry['main'] && [...registry['main'].values()][0];
+    const row = registry['sidebar.panellist'] && [...registry['sidebar.panellist'].values()][0];
+    const diag = document.getElementById('diag');
+    diag.textContent = 'slots: [' + Object.keys(registry).join(', ') + ']  row=' + (row ? row.spec.label() : 'MISSING');
+
+    if (!main) { diag.textContent += '  MAIN MISSING'; return; }
+
+    // Stand-in stores shaped like the host projections, so the adapter's real
+    // grouping/KPI path is what gets exercised here.
+    const MOCK_WS = { phase: 'ready', items: [
+      { workspaceId: 'w1', name: 'ai思考可视化' },
+      { workspaceId: 'w2', name: 'aurabot' },
+    ], archivedSessionIds: [], pinnedSessionIds: [] };
+    const MOCK_LIST = { phase: 'ready', ids: ['s1', 's2', 's3', 's4', 's5'], byId: {
+      s1: { id: 's1', displayTitle: 'HALOFLUX monitor: instrument console', workspaceId: 'w1', running: true, blank: false, retainedBy: { mainView: 1 } },
+      s2: { id: 's2', displayTitle: 'plugin market audit', workspaceId: 'w1', running: false, blank: false },
+      s3: { id: 's3', displayTitle: 'QQ bridge reconnect', workspaceId: 'w2', running: false, blank: false },
+      s4: { id: 's4', displayTitle: '新会话', workspaceId: '', running: false, blank: true },
+      s5: { id: 's5', displayTitle: 'sidebar tab registration', workspaceId: 'w2', running: true, blank: false },
+    } };
+    const MOCK_STATUS = new Map([['s1', { running: true }], ['s5', { running: true }]]);
+    const MODE = new URLSearchParams(location.search).get('mode') || 'run';
+    if (MODE === 'idle') { MOCK_STATUS.clear(); Object.values(MOCK_LIST.byId).forEach((r) => { r.running = false; }); }
+    if (MODE === 'void') { MOCK_LIST.byId = {}; MOCK_LIST.ids = []; MOCK_WS.items = []; }
+    const mockProps = {
+      useSessions: (sel) => (typeof sel === 'function' ? sel(MOCK_LIST) : MOCK_LIST),
+      useWorkspaces: (sel) => (typeof sel === 'function' ? sel(MOCK_WS) : MOCK_WS),
+      useSessionStatus: (sel) => (typeof sel === 'function' ? sel(MOCK_STATUS) : MOCK_STATUS),
+    };
+    ReactDOM.createRoot(document.getElementById('slot')).render(React.createElement(main.comp, mockProps));
+
+    setTimeout(function () {
+      const f = document.querySelector('iframe');
+      if (!f) { diag.textContent += ' | NO FRAME'; return; }
+      const host = f.parentElement;
+      let inner = -1, app = -1;
+      try {
+        inner = f.contentWindow.innerHeight;
+        app = f.contentWindow.document.querySelector('.app').clientHeight;
+      } catch (e) { inner = -2; }
+      diag.textContent += ' | win=' + window.innerHeight + ' body=' + document.body.clientHeight +
+        ' frame=' + document.querySelector('.frame').clientHeight +
+        ' slot=' + document.getElementById('slot').clientHeight +
+        ' host=' + host.clientHeight + ' iframe=' + f.clientHeight + ' inner=' + inner + ' app=' + app;
+      try {
+        const p = f.contentWindow.eval('({tempo:C.tempo,glow:C.glow,ring:C.ringSpeed,cam2:C.camera,beam:C.beamBright,cam:C.camera,mode:document.body.dataset.mode})');
+        diag.textContent += ' | ' + JSON.stringify(p);
+      } catch (e) { diag.textContent += ' | probe failed'; }
+    }, 3000);
+    if (new URLSearchParams(location.search).get('drawer')) setTimeout(function () { try { var r = document.querySelector('iframe').contentWindow.__HF.openDrawer('s2'); document.getElementById('diag').textContent += ' | draw=' + r + ' keys=' + Object.keys(document.querySelector('iframe').contentWindow.__HF).join(','); } catch (e) { document.getElementById('diag').textContent += ' | ERR ' + e.message; } }, 4200);
+  })();
+</script>
+</body>
+</html>

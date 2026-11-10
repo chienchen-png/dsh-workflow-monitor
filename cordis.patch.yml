@@ -1,0 +1,3 @@
+- insert:
+    - id: workflow-monitor
+      name: 'dsh-workflow-monitor'
