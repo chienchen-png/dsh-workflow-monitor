@@ -34,6 +34,7 @@ function payload() {
 
 function answer(res) {
   const body = payload();
+  try { console.log('[workflow-monitor] history served', body.length, 'bytes'); } catch { /* no console */ }
   if (res && typeof res.setHeader === 'function') {
     res.statusCode = 200;
     res.setHeader('content-type', 'application/json; charset=utf-8');
@@ -57,16 +58,39 @@ export function apply(ctx) {
 
   const proto = Object.getPrototypeOf(server) || {};
   const names = Object.getOwnPropertyNames(proto).concat(Object.keys(server));
-  const candidates = names.filter((n) => /^(route|handle|serve|register|add|on)/i.test(n));
   log('host: webServer methods =', names.join(','));
 
+  // Named HTTP route first: `register(name, handler)`. Only if that is absent do
+  // we probe alternatives — and never the upgrade/fallback channels, which accept
+  // the same arguments but mean something entirely different.
+  const handler = (req, res) => answer(res);
+  if (typeof server.register === 'function') {
+    // `register` inspects its first argument for a `resource` field, so it takes a
+    // route descriptor rather than a bare name.
+    for (const spec of [
+      { resource: ROUTE, handler },
+      { resource: ROUTE, method: 'GET', handler },
+      { name: ROUTE, resource: ROUTE, handler },
+      { resource: ROUTE, methods: { GET: handler } },
+      { resource: ROUTE, get: handler },
+    ]) {
+      try {
+        server.register(spec);
+        log('host: HTTP route registered via register ->', JSON.stringify(Object.keys(spec)), ROUTE);
+        return;
+      } catch (e) { /* next shape */ }
+    }
+    log('host: register() rejected every descriptor shape');
+  }
+
+  const candidates = names.filter((n) => /^(route|handle|serve|add)/i.test(n) && !/upgrade|fallback/i.test(n));
   for (const name of candidates) {
     const fn = server[name];
     if (typeof fn !== 'function') continue;
     for (const shape of [
-      () => fn.call(server, ROUTE, (req, res) => answer(res)),
-      () => fn.call(server, { name: ROUTE, handler: (req, res) => answer(res) }),
-      () => fn.call(server, ROUTE, { get: (req, res) => answer(res) }),
+      () => fn.call(server, ROUTE, handler),
+      () => fn.call(server, { name: ROUTE, handler }),
+      () => fn.call(server, ROUTE, { get: handler }),
     ]) {
       try {
         const r = shape();
