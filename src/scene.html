@@ -1520,9 +1520,9 @@ const IDX = Array.from({ length: 11 }, () => Array.from({ length: 28 }, () => rn
    Columns before the page opened are painted from the session's recorded lastActive;
    columns after it accumulate live. The scan column is kept as the flow cue. */
 const HF_IDX_BUCKET = 1800;              // seconds per column
-let HF_IDX = null, HF_IDX_LAST = -99, HF_IDX_SEEDED = '', HF_HISTORY = null;
+let HF_IDX = null, HF_IDX_LAST = -99, HF_IDX_SEEDED = '', HF_HISTORY = null, HF_HISTORY_STAMP = 0;
 function hfSeedIdx() {
-  const sig = HF_IDX.ids.join(',') + '|' + (HF_HISTORY ? 'h' : 'l');
+  const sig = HF_IDX.ids.join(',') + '|' + (HF_HISTORY ? 'h' + HF_HISTORY_STAMP : 'l');
   if (HF_IDX_SEEDED === sig) return;
   HF_IDX_SEEDED = sig;
   const cols = 28, now = Date.now();
@@ -2059,6 +2059,7 @@ window.__HF = (function () {
       const map = {};
       for (const r of s.history.rows) if (r && r.id && Array.isArray(r.buckets)) map[r.id] = r.buckets;
       HF_HISTORY = map;
+      HF_HISTORY_STAMP = s.history.at || 0;
     }
     if (s.sessionsIndex) {
       const idx = { ids: [], rows: (HF_IDX && HF_IDX.rows) || {}, state: {} };

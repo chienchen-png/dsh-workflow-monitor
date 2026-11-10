@@ -335,7 +335,7 @@ const HalofluxBridge = (() => {
       events: evRef.current, lastLat: latRef.current,
       step: stepRef.current, turn: turnRef.current,
       activeSessionId: activeId, now: Date.now(),
-    }), [list, workspaces, statuses, feed, code, tokens, ctxFrac, activeId]);
+    }), [list, workspaces, statuses, feed, code, tokens, ctxFrac, activeId, history]);
   }
 
   return { useTelemetry, build, groupByWorkspace, clock };
