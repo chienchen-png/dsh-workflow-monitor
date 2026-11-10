@@ -65,22 +65,22 @@ export function apply(ctx) {
   // the same arguments but mean something entirely different.
   const handler = (req, res) => answer(res);
   if (typeof server.register === 'function') {
-    // `register` inspects its first argument for a `resource` field, so it takes a
-    // route descriptor rather than a bare name.
-    for (const spec of [
-      { resource: ROUTE, handler },
-      { resource: ROUTE, method: 'GET', handler },
-      { name: ROUTE, resource: ROUTE, handler },
-      { resource: ROUTE, methods: { GET: handler } },
-      { resource: ROUTE, get: handler },
-    ]) {
+    // Host route descriptor: { kind: 'exact' | 'prefix', path, handler | resource }.
+    // Duplicate (kind, path) throws by design, so exact+path is the contract.
+    try {
+      server.register({ kind: 'exact', path: '/' + ROUTE, handler });
+      log('host: HTTP route registered ->', '/' + ROUTE);
+      return;
+    } catch (e) {
+      log('host: register() rejected:', String((e && e.message) || e));
       try {
-        server.register(spec);
-        log('host: HTTP route registered via register ->', JSON.stringify(Object.keys(spec)), ROUTE);
+        server.register({ kind: 'prefix', path: '/' + ROUTE, handler });
+        log('host: prefix route registered ->', '/' + ROUTE);
         return;
-      } catch (e) { /* next shape */ }
+      } catch (e2) {
+        log('host: register(prefix) rejected:', String((e2 && e2.message) || e2));
+      }
     }
-    log('host: register() rejected every descriptor shape');
   }
 
   const candidates = names.filter((n) => /^(route|handle|serve|add)/i.test(n) && !/upgrade|fallback/i.test(n));
