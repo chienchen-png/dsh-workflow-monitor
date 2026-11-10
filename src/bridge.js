@@ -157,7 +157,6 @@ const HalofluxBridge = (() => {
         { k: 'TOKEN/S', v: String(Math.round(tokens)), pct: Math.min(1, tokens / 400), state: tokens > 0 ? 'live' : 'off' },
         { k: '上下文', v: Math.round(ctxFrac * 100) + '%', pct: ctxFrac, state: ctxFrac > 0 ? 'on' : 'off' },
         { k: '缓存', v: Math.round(cacheHit * 100) + '%', pct: cacheHit, state: cacheHit > 0 ? 'on' : 'off' },
-        todayKpi(input.history && input.history.usage),
       ],
       usage: (input.history && input.history.usage) || null,
       requests: input.requests || [],
