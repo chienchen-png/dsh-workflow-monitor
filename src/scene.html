@@ -1473,7 +1473,7 @@ function hfDrawDiffLive(x, w, h) {
 }
 function drawDiff() {
   const x = cDiff.x, w = cDiff.w, h = cDiff.h;
-  if (hfDrawDiffLive(x, w, h)) return;
+  // 实数据版暂时停用：观感不如原版，先保留原装饰场（见 hfDrawDiffLive）
   x.clearRect(0, 0, w, h);
   x.font = `600 7px ${FONT}`; x.textBaseline = 'top';
   const gap = 8, mw = (w - gap) / 2, mh = h * 0.68, cols = 22, rows = 13, cw = mw / cols, ch = (mh - 10) / rows;
