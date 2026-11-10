@@ -1443,8 +1443,55 @@ function drawDiff() {
 }
 
 let valBuf = [[], [], []], valSpike = 0;
+/* sampling buffer — three REAL series. The x-axis keeps scrolling so the panel is
+   always in motion; the values themselves are measured, never synthesised. */
+let HF_VAL = null, HF_VAL_T = -99;
+const HF_VAL_NAMES = ['TOKEN/S', '调用/分', '延迟 ms'];
+function hfDrawValLive(x, w, h) {
+  if (!HF_VAL || !HF_VAL.counters) return false;
+  const lw = 58, n = Math.max(8, Math.floor((w - lw) / 2));
+  if (!HF_VAL.buf) { HF_VAL.buf = [[], [], []]; HF_VAL.prev = null; HF_VAL.max = [8, 6, 400]; }
+  if (T - HF_VAL_T >= 1) {
+    HF_VAL_T = T;
+    const c = HF_VAL.counters, p = HF_VAL.prev;
+    const dtok = p ? Math.max(0, c.tokens - p.tokens) : 0;
+    const dev = p ? Math.max(0, c.events - p.events) * 60 : 0;
+    const lat = Math.max(0, c.lastLat || 0);
+    HF_VAL.prev = { tokens: c.tokens, events: c.events };
+    const raw = [dtok, dev, lat];
+    for (let k = 0; k < 3; k++) {
+      HF_VAL.max[k] = Math.max(raw[k], HF_VAL.max[k] * 0.985, k === 2 ? 80 : 2);
+      HF_VAL.buf[k].push(raw[k] / HF_VAL.max[k]);
+      while (HF_VAL.buf[k].length > n) HF_VAL.buf[k].shift();
+    }
+    HF_VAL.last = raw;
+  }
+  if (!HF_VAL.buf) return true;
+  x.clearRect(0, 0, w, h);
+  x.font = `800 7px ${FONT}`; x.textBaseline = 'middle';
+  const rh = h / 3;
+  for (let k = 0; k < 3; k++) {
+    const yc = rh * k + rh / 2;
+    const series = HF_VAL.buf[k];
+    const now = HF_VAL.last ? HF_VAL.last[k] : 0;
+    x.fillStyle = '#9a9ea7'; x.fillText(HF_VAL_NAMES[k], 0, yc);
+    x.fillStyle = '#5c6068'; x.fillText(String(Math.round(now)), 0, yc + 8);
+    x.strokeStyle = '#1f2227'; x.lineWidth = 1; x.beginPath(); x.moveTo(lw, yc); x.lineTo(w, yc); x.stroke();
+    x.strokeStyle = k === 2 && now > 3000 ? '#f0a6c6' : '#e6e8ec'; x.lineWidth = 1.1;
+    x.beginPath();
+    for (let i = 0; i < series.length; i++) {
+      const px = lw + i * 2, py = yc - series[i] * rh * 0.42;
+      i ? x.lineTo(px, py) : x.moveTo(px, py);
+    }
+    x.stroke();
+  }
+  const cxr = lw + (HF_VAL.buf[0].length) * 2;
+  x.strokeStyle = 'rgba(240,166,198,.6)'; x.beginPath(); x.moveTo(cxr, 0); x.lineTo(cxr, h); x.stroke();
+  return true;
+}
 function drawVal() {
   const x = cVal.x, w = cVal.w, h = cVal.h;
+  if (hfDrawValLive(x, w, h)) return;
   x.clearRect(0, 0, w, h);
   const lw = 58, n = Math.floor((w - lw) / 2), names = ['MASS', 'STABILITY', 'RESIDUAL'];
   if (rnd() < 0.01) valSpike = 1;
@@ -1982,6 +2029,7 @@ window.__HF = (function () {
       HF_ZONES = s.zones;
       if (changed) { rebuildQ.add('slots'); applyRebuilds(); }
     }
+    if (s.counters) HF_VAL = { counters: s.counters, buf: (HF_VAL && HF_VAL.buf) || null, prev: (HF_VAL && HF_VAL.prev) || null, max: (HF_VAL && HF_VAL.max) || null };
     if (s.sessionsIndex) {
       const idx = { ids: [], rows: (HF_IDX && HF_IDX.rows) || {}, state: {} };
       for (const it of s.sessionsIndex.slice(0, 11)) {

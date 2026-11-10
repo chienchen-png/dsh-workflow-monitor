@@ -168,6 +168,11 @@ const HalofluxBridge = (() => {
       zones: groups.map((g, i) => ({ code: 'W' + (i + 1), name: g.name })),
       // Flat session index for the activity matrix: running now, plus "busy"
       // (the followed session had an event in the last few seconds).
+      counters: {
+        tokens: Math.round(tokens),
+        events: input.events || 0,
+        lastLat: input.lastLat || 0,
+      },
       sessionsIndex: groups.reduce((acc, g) => {
         for (const s2 of g.sessions) {
           acc.push({
@@ -224,6 +229,9 @@ const HalofluxBridge = (() => {
     const stepRef = React.useRef(0);
     const turnRef = React.useRef(0);
     const lastRef = React.useRef({ kind: '', at: 0, tool: '' });
+    const evRef = React.useRef(0);
+    const latRef = React.useRef(0);
+    const openAtRef = React.useRef(0);
 
     // Follow the active session's event stream: new entries become feed lines.
     React.useEffect(() => {
@@ -259,7 +267,10 @@ const HalofluxBridge = (() => {
             lines.push({ t: clock(at), v: 'build', text: clip(name + ' ' + args, 46) });
             codeRef.current.push({ ln: '', fn: String(name), op: '(' + clip(args, 28) + ')' });
             lastRef.current = { kind: 'tool', at: Date.now(), tool: String(name) };
+            evRef.current += 1;
+            openAtRef.current = Date.now();
           } else if (type === 'tool/result') {
+            if (openAtRef.current) { latRef.current = Math.max(0, Date.now() - openAtRef.current); openAtRef.current = 0; }
             lines.push({ t: clock(at), v: 'check', text: clip((data.error ? '失败 · ' : '完成 · ') + ((data.name) || 'tool'), 46) });
           } else if (type === 'turn/step') {
             if (typeof data.step === 'number') stepRef.current = data.step;
@@ -298,6 +309,7 @@ const HalofluxBridge = (() => {
 
     return React.useMemo(() => build({
       list, workspaces, statuses, feed, code, tokens, ctxFrac, last: lastRef.current,
+      events: evRef.current, lastLat: latRef.current,
       step: stepRef.current, turn: turnRef.current,
       activeSessionId: activeId, now: Date.now(),
     }), [list, workspaces, statuses, feed, code, tokens, ctxFrac, activeId]);
