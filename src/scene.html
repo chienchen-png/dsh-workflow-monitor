@@ -194,7 +194,7 @@ body[data-hf="live"] .ag:hover .rl{color:var(--white)}
 
   <section class="panels">
     <div class="p"><h3>事件流</h3><div class="feed" id="feed"></div></div>
-    <div class="p"><h3>粒子流场</h3><canvas id="cAdv"></canvas>
+    <div class="p"><h3>活动流场</h3><canvas id="cAdv"></canvas>
       <div class="btns" id="advBtns"><span class="on">对流</span><span>投影</span><span>渲染</span></div></div>
     <div class="p"><h3>工具调用</h3><div class="code" id="code"></div></div>
     <div class="p"><h3>缓存命中 / 上下文</h3><canvas id="cDiff"></canvas><div class="cap">同一输入 · 局部差异 · 查看来源</div></div>
@@ -1430,7 +1430,7 @@ function drawAdv(dt) {
   }
   x.stroke();
 }
-setInterval(() => { const b = document.querySelectorAll('#advBtns span'); const i = [...b].findIndex(s => s.classList.contains('on')); b[i].classList.remove('on'); b[(i + 1) % 3].classList.add('on'); }, 1400);
+// 假控件轮播已移除：面板现在由真实遥测驱动
 
 /* reference / difference field — real request telemetry.
    left: cache-hit band per request; right: context pressure band per request;
