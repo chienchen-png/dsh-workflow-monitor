@@ -5,6 +5,7 @@
  * renders in `client.js`; this side only answers what the browser cannot read:
  * per-bucket activity, plus token usage and estimated cost.
  */
+import os from 'node:os';
 import { aggregate } from './host/history.mjs';
 import { usageAggregate, loadPrices } from './host/usage.mjs';
 
@@ -28,6 +29,7 @@ function payload() {
       columns: 28,
       rows: rows.map((r) => ({ id: r.id, buckets: r.buckets, last: r.last, total: r.total })),
       usage,
+      mem: (() => { const total = os.totalmem(), free = os.freemem(); return { total, free, used: total - free }; })(),
     }),
   };
   return cache.body;

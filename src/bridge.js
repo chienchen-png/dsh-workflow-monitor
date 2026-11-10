@@ -156,7 +156,7 @@ const HalofluxBridge = (() => {
         { k: '运行中', v: String(running), pct: Math.min(1, running / 6), tone: running > 0 ? 'pink' : '', state: running > 0 ? 'on' : 'off' },
         { k: 'TOKEN/S', v: String(Math.round(tokens)), pct: Math.min(1, tokens / 400), state: tokens > 0 ? 'live' : 'off' },
         { k: '上下文', v: Math.round(ctxFrac * 100) + '%', pct: ctxFrac, state: ctxFrac > 0 ? 'on' : 'off' },
-        { k: '缓存', v: Math.round(cacheHit * 100) + '%', pct: cacheHit, state: cacheHit > 0 ? 'on' : 'off' },
+        memKpi(input.history),
       ],
       usage: (input.history && input.history.usage) || null,
       requests: input.requests || [],
@@ -214,6 +214,20 @@ const HalofluxBridge = (() => {
    * selectors are answered from an empty shape instead of throwing.
    */
   const HISTORY_URL = '/workflow-monitor/usage-v2';
+
+  /** 机器内存占用（Host 侧 os 统计，30 秒随 payload 刷新一次） */
+  function memKpi(history) {
+    const m = history && history.mem;
+    if (!m || !m.total) return { k: '内存', v: '—', pct: 0 };
+    const frac = Math.max(0, Math.min(1, (m.used || (m.total - m.free)) / m.total));
+    return {
+      k: '内存',
+      v: Math.round(frac * 100) + '%',
+      pct: frac,
+      state: 'on',
+      tone: frac > 0.85 ? 'pink' : '',
+    };
+  }
 
   /** Today's spend as a KPI: money when the price table covers the day, tokens otherwise. */
   function todayKpi(usage) {
