@@ -154,7 +154,16 @@ const HalofluxBridge = (() => {
         { k: '工作区', v: String(groups.length), pct: Math.min(1, groups.length / 6), state: groups.length ? 'on' : 'off' },
         { k: '会话', v: String(rows), pct: Math.min(1, rows / 12), state: rows ? 'on' : 'off' },
         { k: '运行中', v: String(running), pct: Math.min(1, running / 6), tone: running > 0 ? 'pink' : '', state: running > 0 ? 'on' : 'off' },
-        { k: 'TOKEN/S', v: String(Math.round(tokens)), pct: Math.min(1, tokens / 400), state: tokens > 0 ? 'live' : 'off' },
+        (() => {
+          const busy = running > 0;
+          const tps = Math.round(tokens);
+          const level = !busy ? '' : tps < 10 ? 'warn' : tps > 80 ? 'fast' : 'ok';
+          return {
+            k: 'TOKEN/S', v: String(tps), pct: Math.min(1, tps / 120),
+            state: busy ? 'on' : 'off', level,
+            tone: level === 'warn' ? 'pink' : '',
+          };
+        })(),
         { k: '上下文', v: Math.round(ctxFrac * 100) + '%', pct: ctxFrac, state: ctxFrac > 0 ? 'on' : 'off' },
         memKpi(input.history),
       ],
@@ -278,6 +287,8 @@ const HalofluxBridge = (() => {
     const evRef = React.useRef(0);
     const latRef = React.useRef(0);
     const openAtRef = React.useRef(0);
+    const lastFlushRef = React.useRef(0);
+    const emaRef = React.useRef(0);
 
     // Follow the active session's event stream: new entries become feed lines.
     React.useEffect(() => {
@@ -337,7 +348,7 @@ const HalofluxBridge = (() => {
               const cached = num(usage.cacheReadTokens) || 0;
               const frac = Math.min(1, inTok / 128000);
               setCtxFrac(frac);
-              setTokens(Math.round(outTok));
+              // 速率由流式增量的滑动平均给出，这里只用 usage 算上下文与缓存
               const hit = inTok + cached > 0 ? cached / (inTok + cached) : 0;
               setCacheHit(hit);
               const q = reqsRef.current;
@@ -346,7 +357,14 @@ const HalofluxBridge = (() => {
             }
           }
         }
-        if (tok > 0) setTokens((n) => n + tok);
+        if (tok > 0) {
+          const nowMs = Date.now();
+          const dt = lastFlushRef.current ? Math.max(120, nowMs - lastFlushRef.current) : 600;
+          lastFlushRef.current = nowMs;
+          const inst = (tok / dt) * 1000;
+          emaRef.current = emaRef.current ? emaRef.current * 0.6 + inst * 0.4 : inst;
+          setTokens(Math.round(emaRef.current));
+        }
         linesRef.current = lines.slice(-FEED_MAX);
         setFeed(linesRef.current.slice());
         codeRef.current = codeRef.current.slice(-10);
