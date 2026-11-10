@@ -25,7 +25,7 @@ function payload() {
     at: now,
     body: JSON.stringify({
       at: now,
-      bucketMs: 30 * 60 * 1000,
+      bucketMs: 90 * 60 * 1000,
       columns: 28,
       rows: rows.map((r) => ({ id: r.id, buckets: r.buckets, last: r.last, total: r.total })),
       usage,

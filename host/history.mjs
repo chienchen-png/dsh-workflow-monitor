@@ -8,8 +8,8 @@ import path from "node:path";
 import os from "node:os";
 import zlib from "node:zlib";
 
-export const BUCKET_MS = 30 * 60 * 1000;
-export const COLUMNS = 28;               // 28 x 30min = 14 hours
+export const BUCKET_MS = 90 * 60 * 1000;   // 1.5h per column
+export const COLUMNS = 28;               // 28 x 1.5h = 42 hours
 const MAGIC = [0x28, 0xb5, 0x2f, 0xfd];
 
 function logFiles(dir, out, depth) {
