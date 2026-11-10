@@ -110,6 +110,7 @@ const HalofluxBridge = (() => {
     for (const g of groups) for (const s of g.sessions) if (isRunning(s)) running += 1;
 
     const tokens = input.tokens || 0;
+    const cacheHit = input.cacheHit || 0;
     const ctxFrac = typeof input.ctxFrac === 'number' ? input.ctxFrac : 0;
     const mode = rows === 0 ? 'void' : running > 0 ? 'run' : 'idle';
 
