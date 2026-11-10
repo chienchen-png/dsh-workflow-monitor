@@ -195,7 +195,7 @@ body[data-hf="live"] .ag:hover .rl{color:var(--white)}
   <section class="panels">
     <div class="p"><h3>事件流</h3><div class="feed" id="feed"></div></div>
     <div class="p"><h3>活动流场</h3><canvas id="cAdv"></canvas>
-      <div class="cap">速度 ∝ TOKEN/S · 脉冲 = 工具调用</div></div>
+      <div class="btns" id="advBtns"><span>对流</span><span>投影</span><span>渲染</span></div></div>
     <div class="p"><h3>工具调用</h3><div class="code" id="code"></div></div>
     <div class="p"><h3>缓存命中 / 上下文</h3><canvas id="cDiff"></canvas><div class="cap">同一输入 · 局部差异 · 查看来源</div></div>
     <div class="p"><h3>工作区路由</h3><div class="routes" id="routes"></div><div class="cap">工作区 → 会话 → 运行状态</div></div>
@@ -1413,6 +1413,12 @@ const flow = (x, y) => Math.sin(x * 0.035 + HF_FLOW_T * 0.6) * Math.cos(y * 0.05
 function drawAdv(dt) {
   const x = cAdv.x, w = cAdv.w, h = cAdv.h;
   const act = hfActivity();
+  // 三个灯映射三种真实状态，保留原控件外观
+  if (!window.__hfBtns || window.__hfBtns.length !== 3) window.__hfBtns = document.querySelectorAll('#advBtns span');
+  if (window.__hfBtns && window.__hfBtns.length === 3) {
+    const st = HF_BURST > 0.15 ? 1 : (act > 0.35 ? 0 : 2);
+    for (let bi = 0; bi < 3; bi++) window.__hfBtns[bi].classList.toggle('on', bi === st);
+  }
   HF_FLOW_T += dt * (0.25 + 1.9 * act);
   const ev = HF_VAL && HF_VAL.counters ? (HF_VAL.counters.events || 0) : 0;
   if (HF_EV_SEEN < 0) HF_EV_SEEN = ev;
