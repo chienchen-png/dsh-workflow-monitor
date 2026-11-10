@@ -116,5 +116,28 @@
     if (new URLSearchParams(location.search).get('drawer')) setTimeout(function () { try { var r = document.querySelector('iframe').contentWindow.__HF.openDrawer('s2'); document.getElementById('diag').textContent += ' | draw=' + r + ' keys=' + Object.keys(document.querySelector('iframe').contentWindow.__HF).join(','); } catch (e) { document.getElementById('diag').textContent += ' | ERR ' + e.message; } }, 4200);
   })();
 </script>
+<script>
+(function(){
+  if (new URLSearchParams(location.search).get('mock') !== 'history') return;
+  var f = document.querySelector('iframe');
+  var buckets = function(seed){ var a=[]; for(var i=0;i<28;i++){ a.push(((i*seed)%7===0)?12:((i*seed)%3===0?3:0)); } return a; };
+  var snap = {
+    brand:'智能体实时运行态势', sub:'DeepSeek Harness · 本机', clock:'02:20:00', mode:'run',
+    kpis:[{k:'工作区',v:'2',pct:.3,state:'on'},{k:'会话',v:'4',pct:.3,state:'on'},{k:'运行中',v:'2',pct:.3,tone:'pink',state:'on'},
+          {k:'TOKEN/S',v:'120',pct:.3,state:'live'},{k:'上下文',v:'12%',pct:.12,state:'on'},{k:'缓存',v:'68%',pct:.68,state:'on'},{k:'今日 tokens',v:'180k',pct:.4,state:'on'}],
+    status:{big:'2 / 4 会话 · 2 空闲', small:'更新 02:20:00'},
+    phase:{k:'生成中', v:'120 tok/s'},
+    sessionsIndex:[{id:'s1',label:'Ha1',running:true,busy:true,lastActive:Date.now()-3600e3},
+                   {id:'s2',label:'B站博',running:false,busy:false,lastActive:Date.now()-7200e3},
+                   {id:'s3',label:'QQ对话',running:true,busy:false,lastActive:Date.now()-1800e3},
+                   {id:'s4',label:'任务结',running:false,busy:false,lastActive:Date.now()-86400e3}],
+    history:{at:1,columns:28,rows:[{id:'s1',buckets:buckets(3)},{id:'s2',buckets:buckets(2)},{id:'s3',buckets:buckets(5)},{id:'s4',buckets:buckets(7)}]},
+    workspaces:[{name:'ai思考可视化',sessions:2,running:1,sessionsDetail:[]}],
+    feed:[], code:[], counters:{tokens:120,events:2,lastLat:900}
+  };
+  setInterval(function(){ try{ f.contentWindow.__HF.ingest(snap); }catch(e){} }, 400);
+})();
+window.__ERR=1;window.addEventListener('error',function(e){var d=document.getElementById('diag');if(d)d.textContent='ERR: '+(e.message||e.error);});
+</script>
 </body>
 </html>

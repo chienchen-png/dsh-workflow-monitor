@@ -1608,6 +1608,10 @@ function hfSeedIdx() {
 function hfDrawIdxLive(x, w, h) {
   if (!HF_IDX || !HF_IDX.ids || !HF_IDX.ids.length) return false;
   hfSeedIdx();
+  // 没有任何真实格子时退回原版装饰矩阵：宁可好看，也不要一块空板
+  let anyData = false;
+  for (const id of HF_IDX.ids) { const r = HF_IDX.rows[id]; if (r && r.some((v) => v > 0)) { anyData = true; break; } }
+  if (!anyData) return false;
   x.clearRect(0, 0, w, h);
   x.font = `600 6.5px ${FONT}`; x.textBaseline = 'middle';
   const cols = 28, rows = Math.min(11, HF_IDX.ids.length);
