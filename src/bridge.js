@@ -173,6 +173,7 @@ const HalofluxBridge = (() => {
         events: input.events || 0,
         lastLat: input.lastLat || 0,
       },
+      history: input.history || null,
       sessionsIndex: groups.reduce((acc, g) => {
         for (const s2 of g.sessions) {
           acc.push({
@@ -207,6 +208,8 @@ const HalofluxBridge = (() => {
    * store is absent (older host, or a slot that does not project it) the
    * selectors are answered from an empty shape instead of throwing.
    */
+  const HISTORY_URL = '/workflow-monitor/history';
+
   function useTelemetry(props) {
     const useSessions = props && typeof props.useSessions === 'function' ? props.useSessions : inert(EMPTY_LIST);
     const useWorkspaces = props && typeof props.useWorkspaces === 'function' ? props.useWorkspaces : inert(EMPTY_WS);
@@ -224,6 +227,7 @@ const HalofluxBridge = (() => {
 
     const [feed, setFeed] = React.useState([]);
     const [code, setCode] = React.useState([]);
+    const [history, setHistory] = React.useState(null);
     const [tokens, setTokens] = React.useState(0);
     const [ctxFrac, setCtxFrac] = React.useState(0);
     const seenRef = React.useRef({ key: '', count: 0 });
@@ -310,8 +314,24 @@ const HalofluxBridge = (() => {
     // and recreate the poll on each tick. The only real dependency is the session.
     }, [activeId]);
 
+    // Per-bucket history comes from the Host half (it is the only side that can
+    // read the session logs). Absent route → the matrix keeps its local fallback.
+    React.useEffect(() => {
+      let alive = true;
+      const pull = () => {
+        fetch(HISTORY_URL, { cache: 'no-store' })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((d) => { if (alive && d && Array.isArray(d.rows)) setHistory(d); })
+          .catch(() => { /* route absent or not authorised */ });
+      };
+      pull();
+      const timer = window.setInterval(pull, 30000);
+      return () => { alive = false; window.clearInterval(timer); };
+    }, []);
+
     return React.useMemo(() => build({
       list, workspaces, statuses, feed, code, tokens, ctxFrac, last: lastRef.current,
+      history,
       events: evRef.current, lastLat: latRef.current,
       step: stepRef.current, turn: turnRef.current,
       activeSessionId: activeId, now: Date.now(),
