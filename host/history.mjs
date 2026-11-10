@@ -1,71 +1,81 @@
-// history.mjs — aggregate per-session activity into 30-minute buckets from the
-// local session logs. Pure Node, no DSH imports: testable on its own.
+// history.mjs — per-session activity buckets from the local session logs.
+//
+// The logs are *concatenated* zstd frames (one frame per append). Node's
+// one-shot and streaming zstd both stop at the first frame, so frames are
+// split on the zstd magic and decompressed one by one.
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import zlib from "node:zlib";
 
-const HOME = process.env.DSH_HOME || path.join(os.homedir(), ".dsh");
-const BUCKET_MS = 30 * 60 * 1000;
-const WINDOW = 28; // columns
+export const BUCKET_MS = 30 * 60 * 1000;
+export const COLUMNS = 28;               // 28 x 30min = 14 hours
+const MAGIC = [0x28, 0xb5, 0x2f, 0xfd];
 
-function walk(dir, out, depth) {
+function logFiles(dir, out, depth) {
   if (depth > 4) return out;
   let items = [];
   try { items = fs.readdirSync(dir, { withFileTypes: true }); } catch { return out; }
   for (const it of items) {
     const p = path.join(dir, it.name);
-    if (it.isDirectory()) walk(p, out, depth + 1);
+    if (it.isDirectory()) logFiles(p, out, depth + 1);
     else if (it.name.startsWith("session") && it.name.includes(".jsonl")) out.push(p);
   }
   return out;
 }
 
-function stampOf(line) {
-  // the logs carry an ISO `time` (host events) or a numeric ts depending on format
-  const m = /"(?:time|timestamp|at)"\s*:\s*"([^"]+)"/.exec(line);
-  if (m) { const t = Date.parse(m[1]); if (!Number.isNaN(t)) return t; }
-  const n = /"(?:time|ts|timestamp)"\s*:\s*(\d{10,13})/.exec(line);
-  if (n) { const v = Number(n[1]); return v < 1e12 ? v * 1000 : v; }
-  return 0;
+function decompressFrames(buf) {
+  const cut = [];
+  for (let i = 0; i < buf.length - 3; i++) {
+    if (buf[i] === MAGIC[0] && buf[i + 1] === MAGIC[1] && buf[i + 2] === MAGIC[2] && buf[i + 3] === MAGIC[3]) cut.push(i);
+  }
+  cut.push(buf.length);
+  const parts = [];
+  let from = 0;
+  for (const to of cut) {
+    if (to <= from) continue;
+    try { parts.push(zlib.zstdDecompressSync(buf.subarray(from, to))); from = to; } catch { /* extend span */ }
+  }
+  return Buffer.concat(parts).toString("utf8");
 }
 
-export function aggregate() {
-  const files = walk(path.join(HOME, "sessions"), [], 0);
-  const now = Date.now();
-  const start = now - WINDOW * BUCKET_MS;
-  const bySession = new Map();
-  for (const f of files) {
+const STAMP = /"(?:time|timestamp|at|createdAt|ts)"\s*:\s*(\d{10,13})/;
+
+export function aggregate(opts = {}) {
+  const home = opts.home || process.env.DSH_HOME || path.join(os.homedir(), ".dsh");
+  const now = opts.now || Date.now();
+  const cols = opts.columns || COLUMNS;
+  const start = now - cols * BUCKET_MS;
+  const rows = [];
+  for (const file of logFiles(path.join(home, "sessions"), [], 0)) {
     let text = "";
-    try {
-      const buf = fs.readFileSync(f);
-      text = (f.endsWith(".zstd") && zlib.zstdDecompressSync ? zlib.zstdDecompressSync(buf) : buf).toString("utf8");
-    } catch { continue; }
-    const id = path.basename(path.dirname(f));
-    const row = bySession.get(id) || { id, buckets: new Array(WINDOW).fill(0), last: 0 };
+    try { text = decompressFrames(fs.readFileSync(file)); } catch { continue; }
+    const id = path.basename(path.dirname(file));
+    const buckets = new Array(cols).fill(0);
+    let last = 0, total = 0;
     for (const line of text.split("\n")) {
-      if (!line.trim()) continue;
-      const t = stampOf(line);
-      if (!t || t < start) continue;
-      if (t > row.last) row.last = t;
-      const idx = Math.min(WINDOW - 1, Math.floor((t - start) / BUCKET_MS));
-      row.buckets[idx] += 1;
+      if (!line) continue;
+      const m = STAMP.exec(line);
+      if (!m) continue;
+      const t = Number(m[1]);
+      if (t < start || t > now) continue;
+      total++;
+      if (t > last) last = t;
+      const idx = Math.min(cols - 1, Math.floor((t - start) / BUCKET_MS));
+      buckets[idx]++;
     }
-    bySession.set(id, row);
+    if (total) rows.push({ id, buckets, last, total });
   }
-  return [...bySession.values()]
-    .filter((r) => r.last > 0)
-    .sort((a, b) => b.last - a.last)
-    .slice(0, 11);
+  rows.sort((a, b) => b.last - a.last);
+  return rows.slice(0, opts.rows || 11);
 }
 
 if (process.argv[1] && process.argv[1].endsWith("history.mjs")) {
+  const t0 = Date.now();
   const rows = aggregate();
-  console.log("files scanned:", walk(path.join(HOME, "sessions"), [], 0).length, "| rows:", rows.length);
+  console.log("rows:", rows.length, "elapsed:", Date.now() - t0, "ms  (28 cols x 30min)");
   for (const r of rows) {
     const cells = r.buckets.map((n) => (n === 0 ? "." : n < 5 ? "+" : n < 40 ? "#" : "@")).join("");
-    console.log(r.id.slice(0, 12).padEnd(13), cells, "last:", new Date(r.last).toLocaleString("zh-CN"));
+    console.log(r.id.slice(9, 21).padEnd(13), cells, String(r.total).padStart(5), new Date(r.last).toLocaleString("zh-CN"));
   }
 }
-
-
