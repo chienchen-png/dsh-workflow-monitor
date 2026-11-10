@@ -1578,6 +1578,8 @@ const IDX = Array.from({ length: 11 }, () => Array.from({ length: 28 }, () => rn
    columns after it accumulate live. The scan column is kept as the flow cue. */
 const HF_IDX_BUCKET = 1800;              // seconds per column
 let HF_IDX = null, HF_IDX_LAST = -99, HF_IDX_SEEDED = '', HF_HISTORY = null, HF_HISTORY_STAMP = 0;
+/* store ids and log ids differ by a `session-` prefix; match on the bare uuid */
+const normId = (v) => String(v == null ? '' : v).replace(/^session-/, '');
 function hfSeedIdx() {
   const sig = HF_IDX.ids.join(',') + '|' + (HF_HISTORY ? 'h' + HF_HISTORY_STAMP : 'l');
   if (HF_IDX_SEEDED === sig) return;
@@ -1586,7 +1588,7 @@ function hfSeedIdx() {
   for (const id of HF_IDX.ids) {
     const row = HF_IDX.rows[id] || (HF_IDX.rows[id] = []);
     row.length = 0;
-    const hb = HF_HISTORY && HF_HISTORY[id];
+    const hb = HF_HISTORY && HF_HISTORY[normId(id)];
     if (hb && hb.length) {
       for (let i = 0; i < cols; i++) {
         const n = hb[hb.length - cols + i] || 0;
@@ -1596,7 +1598,9 @@ function hfSeedIdx() {
     }
     const la = (HF_IDX.state[id] || {}).lastActive || 0;
     const back = la ? Math.floor((now - la) / (HF_IDX_BUCKET * 1000)) : -1;
-    const at = back >= 0 ? cols - 1 - Math.min(cols - 1, back) : -1;
+    let at = back >= 0 ? cols - 1 - Math.min(cols - 1, back) : -1;
+    // never leave a live session invisible: with no recorded activity, mark "now"
+    if (at < 0 && (HF_IDX.state[id] || {}).running) at = cols - 1;
     for (let i = 0; i < cols; i++) row.push(i === at ? 0.75 : 0);
   }
 }
@@ -2115,7 +2119,7 @@ window.__HF = (function () {
     if (s.requests) HF_REQ = s.requests;
     if (s.history && Array.isArray(s.history.rows)) {
       const map = {};
-      for (const r of s.history.rows) if (r && r.id && Array.isArray(r.buckets)) map[r.id] = r.buckets;
+      for (const r of s.history.rows) if (r && r.id && Array.isArray(r.buckets)) map[normId(r.id)] = r.buckets;
       HF_HISTORY = map;
       HF_HISTORY_STAMP = s.history.at || 0;
     }
