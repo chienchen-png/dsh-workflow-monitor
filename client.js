@@ -219,7 +219,7 @@ window.__ModuleLoader__.load({
        * store is absent (older host, or a slot that does not project it) the
        * selectors are answered from an empty shape instead of throwing.
        */
-      const HISTORY_URL = '/workflow-monitor/history';
+      const HISTORY_URL = '/workflow-monitor/usage-v2';
     
       /** Today's spend as a KPI: money when the price table covers the day, tokens otherwise. */
       function todayKpi(usage) {

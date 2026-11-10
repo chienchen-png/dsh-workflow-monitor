@@ -12,7 +12,7 @@
 import { aggregate } from './host/history.mjs';
 import { usageAggregate, loadPrices } from './host/usage.mjs';
 
-const ROUTE = 'workflow-monitor/history';
+const ROUTE = 'workflow-monitor/usage-v2';
 const CACHE_MS = 30 * 1000;
 const PRICES = new URL('./prices.json', import.meta.url);
 
