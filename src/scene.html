@@ -41,6 +41,12 @@ header{display:grid;grid-template-columns:minmax(230px,1fr) minmax(0,1.5fr) auto
 .kpi .v{font-size:13px;font-weight:800;color:var(--white);font-variant-numeric:tabular-nums;order:1;min-width:16px;text-align:right}
 .kpi .v.pink{color:var(--pink)}
 .kpi .seg{display:none}
+/* 内存三态指示灯：冰蓝=正常 琥珀=警惕 红=过高 */
+.kpi[data-lv="ok"] .dot{background:#9fd8ff;box-shadow:0 0 7px rgba(159,216,255,.9),0 0 18px rgba(159,216,255,.45)}
+.kpi[data-lv="warn"] .dot{background:#f0b45a;box-shadow:0 0 7px rgba(240,180,90,.95),0 0 18px rgba(240,180,90,.5)}
+.kpi[data-lv="high"] .dot{background:#ff6b6b;box-shadow:0 0 8px rgba(255,107,107,1),0 0 20px rgba(255,107,107,.55);animation:hfpulse 1.2s ease-in-out infinite}
+.kpi[data-lv="warn"] .v{color:#f0b45a}
+.kpi[data-lv="high"] .v{color:#ff6b6b}
 .status-zone{display:flex;align-items:center;gap:12px;padding-bottom:2px}
 .status-zone .clock{font-size:11px;color:var(--dim);font-variant-numeric:tabular-nums;letter-spacing:.4px}
 .status-zone .pill{display:flex;align-items:center;gap:6px;border:1px solid rgba(240,166,198,.4);
@@ -2020,6 +2026,7 @@ window.__HF = (function () {
       row.classList.toggle('on', item.state === 'on' || item.state === 'live');
       row.classList.toggle('live', item.state === 'live');
       row.classList.toggle('pink', item.tone === 'pink');
+      row.dataset.lv = item.level || '';
       const v = row.querySelector('.v');
       if (v) {
         setText(v, item.v);

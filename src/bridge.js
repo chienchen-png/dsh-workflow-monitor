@@ -220,12 +220,14 @@ const HalofluxBridge = (() => {
     const m = history && history.mem;
     if (!m || !m.total) return { k: '内存', v: '—', pct: 0 };
     const frac = Math.max(0, Math.min(1, (m.used || (m.total - m.free)) / m.total));
+    const level = frac >= 0.90 ? 'high' : frac >= 0.75 ? 'warn' : 'ok';
     return {
       k: '内存',
       v: Math.round(frac * 100) + '%',
       pct: frac,
       state: 'on',
-      tone: frac > 0.85 ? 'pink' : '',
+      level,
+      tone: level === 'high' ? 'pink' : '',
     };
   }
 
