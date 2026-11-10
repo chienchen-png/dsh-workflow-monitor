@@ -179,6 +179,9 @@ const HalofluxBridge = (() => {
             id: s2.id,
             label: rowTitle(s2, s2.id).slice(0, 3),
             running: isRunning(s2),
+            // last recorded activity, whatever the projection calls it
+            lastActive: Number(s2.updatedAt || s2.lastActiveAt || s2.lastActivityAt ||
+              s2.updated_at || s2.updated || 0) || 0,
             busy: s2.id === input.activeSessionId && last.at > 0 && now - last.at < 4000,
           });
         }
