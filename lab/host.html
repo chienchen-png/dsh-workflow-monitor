@@ -12,6 +12,8 @@
   #slot { flex: 1 1 auto; min-height: 0; position: relative; }
   #diag { position: fixed; right: 8px; bottom: 6px; color: #4b8; font: 11px/1.3 Consolas, monospace;
           background: rgba(0,0,0,.7); padding: 3px 7px; border: 1px solid #2a3; z-index: 9; }
+  body[data-clean="1"] .bar, body[data-clean="1"] #diag { display: none; }
+  body[data-clean="1"] .frame { height: 100%; }
 </style>
 </head>
 <body>
@@ -133,12 +135,37 @@
                    {id:'s4',label:'任务结',running:false,busy:false,lastActive:Date.now()-86400e3}],
     history:{at:1,columns:28,rows:[{id:'s1',buckets:buckets(3)},{id:'s2',buckets:buckets(2)},{id:'s3',buckets:buckets(5)},{id:'s4',buckets:buckets(7)}]},
     workspaces:[{name:'ai思考可视化',sessions:2,running:1,sessionsDetail:[]}],
-    feed:[], code:[], counters:{tokens:120,events:2,lastLat:900}
+    feed:[
+      {t:'03:28:41',v:'build',text:'pwsh  New-Item -ItemType Directory -Path src'},
+      {t:'03:28:43',v:'check',text:'完成 · pwsh'},
+      {t:'03:28:47',v:'build',text:'pwsh  npm run build'},
+      {t:'03:28:52',v:'read',text:'步骤 3 · 回合 1'},
+      {t:'03:28:55',v:'build',text:'file  index.html'},
+      {t:'03:29:02',v:'check',text:'完成 · file'},
+      {t:'03:29:06',v:'build',text:'pwsh  node --check bundle.js'},
+      {t:'03:29:09',v:'check',text:'失败 · pwsh'},
+      {t:'03:29:14',v:'build',text:'file  palette.css'},
+      {t:'03:29:18',v:'check',text:'完成 · file'}
+    ],
+    code:[
+      {ln:'',fn:'pwsh',op:'(New-Item -ItemType Directory)'},
+      {ln:'',fn:'file',op:'(src/index.html)'},
+      {ln:'',fn:'pwsh',op:'(node --check)'},
+      {ln:'',fn:'tool',op:'(write)'}
+    ],
+    counters:{tokens:1260,events:9,lastLat:820}
   };
-  setInterval(function(){ try{ f.contentWindow.__HF.ingest(snap); }catch(e){} }, 400);
+  setInterval(function(){
+    try {
+      var w = f.contentWindow, H = w.__HF; if (!H) return;
+      if (!w.__hfPatched) { w.__hfPatched = true; w.__hfReal = H.ingest; H.ingest = function () {}; }
+      w.__hfReal(snap);
+    } catch (e) {}
+  }, 300);
 })();
 window.__ERR=1;window.addEventListener('error',function(e){var d=document.getElementById('diag');if(d)d.textContent='ERR: '+(e.message||e.error);});
 </script>
 <script>window.addEventListener('message',function(e){var d=e.data;if(!d||d.hf!=='state')return;var el=document.getElementById('diag');if(el)el.textContent='SCENE act='+d.act.toFixed(2)+' st='+d.st+' burst='+d.burst.toFixed(2);});</script>
+<script>if(new URLSearchParams(location.search).get('clean'))document.body.dataset.clean='1';</script>
 </body>
 </html>

@@ -1724,7 +1724,17 @@ function drawIdx() {
    LOOP
    ========================================================= */
 let last = performance.now();
+/* 捕获钩子：冻结 rAF，由外部按毫秒推进，用于逐帧采样真实动画 */
+window.__hfCapture = false;
+window.__hfStep = function (ms) {
+  window.__hfCapture = true;
+  const dt = Math.min(0.05, (ms || 16.7) / 1000);
+  T += dt;
+  drawStage(dt); drawAdv(dt); drawDiff(); drawVal(); drawIdx(); agentsTick(dt);
+  return T;
+};
 function frame(now) {
+  if (window.__hfCapture) return;
   const dt = Math.min(0.05, (now - last) / 1000); last = now; T += dt;
   drawStage(dt);
   drawAdv(dt); drawDiff(); drawVal(); drawIdx(); agentsTick(dt);
