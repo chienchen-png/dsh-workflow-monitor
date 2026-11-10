@@ -1292,10 +1292,7 @@ kpiTick(); setInterval(kpiTick, 2600);
    PANELS
    ========================================================= */
 // --- investigation feed ---
-const ACTS = ['extract governing equation', 'prepare clean checkout', 'load shared reference scene', 'implement independent method',
-  'review numerical stability', 'check mass conservation', 'record boundary conditions', 'attach source page links',
-  'compare reference outputs', 'retain missing details', 'package clean checkout', 'validate sample buffer',
-  'diff against reference scene', 'resolve ambiguous notation', 'reproduce figure 3', 'sweep timestep sensitivity'];
+const ACTS = ['读取工作区文件', '执行命令', '检索会话记录', '写入产物文件', '查询会话列表'];
 const VERBS = ['build', 'check', 'read', 'qa', 'build', 'check'];
 const feed = document.getElementById('feed');
 let feedN = 37;
@@ -1309,10 +1306,7 @@ for (let i = 0; i < 12; i++) feedPush();
 setInterval(() => { if (!window.__HF_FEED) feedPush(); }, 650);
 
 // --- method workspace (typing) ---
-const CODE = [['papers', 'load_collection', '()'], ['eqs', 'extract_equations', '(papers)'], ['inputs', 'shared_scene', '()'],
-  ['state', 'method.step', '(inputs)'], ['', 'check_mass', '(state, reference)'], ['', 'check_stability', '(state)'],
-  ['', 'compare_reference', '(state)'], ['', 'attach_page_refs', '(eqs)'], ['', 'retain_missing_details', '()'],
-  ['', 'package_clean_checkout', '()']];
+const CODE = [['', 'session.attach', '()'], ['', 'event.stream', '(waiting)'], ['', 'tool.dispatch', '(pending)']];
 const codeEl = document.getElementById('code');
 let cLine = 0, cChar = 0, cNum = 7, typed = [];
 const codeStr = l => (l[0] ? l[0] + ' = ' : '') + l[1] + l[2];
