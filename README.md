@@ -145,6 +145,18 @@ python -m http.server 8791 --bind 127.0.0.1 --directory .
 # 打开 http://127.0.0.1:8791/lab/host.html?mode=run|idle|void
 ```
 
+### 历史矩阵的数据路径
+
+「指标矩阵」的每一格是真实事件，不是动画：
+
+1. 会话日志 `~/.dsh/sessions/<workspace>/session-<id>/session.v4.jsonl.zstd` 是**拼接的 zstd 帧**（每次追加写一帧），Node 的一次性解压与流式解压都只返回第一帧；
+2. `host/history.mjs` 按 zstd 魔数 `28 B5 2F FD` 切帧后逐帧解压（实测 3454 帧 → 5792 条事件，2.3 秒）；
+3. 按 30 分钟切桶，聚合成「会话 × 28 列 = 14 小时」；
+4. Host 每 30 秒缓存一次，通过 `ctx.webServer.register({ kind: 'exact', path: '/workflow-monitor/history', handler })` 提供 JSON；
+5. 前端每 30 秒 `fetch('/workflow-monitor/history')`，有数据就渲染真桶，没有则退回会话的 `lastActive` 单点标记。
+
+> **架构说明**：原计划用 `TypertRemoteService` + `@Remote({mode:'stream'})` 暴露一条流。实测 `ctx.webServer` 的具名路由更简单——不需要给插件引入 TypeScript 构建链与装饰器，且同样是宿主官方通道。代价是轮询而非推送（30 秒一次，对半小时粒度的数据没有意义差别）。
+
 ## 7. 已知限制
 
 - 场景在 iframe 中：同源才能直接调用 `contentWindow.__HF`，否则回退 `postMessage`
