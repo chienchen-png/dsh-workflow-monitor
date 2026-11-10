@@ -157,6 +157,27 @@ python -m http.server 8791 --bind 127.0.0.1 --directory .
 
 > **架构说明**：原计划用 `TypertRemoteService` + `@Remote({mode:'stream'})` 暴露一条流。实测 `ctx.webServer` 的具名路由更简单——不需要给插件引入 TypeScript 构建链与装饰器，且同样是宿主官方通道。代价是轮询而非推送（30 秒一次，对半小时粒度的数据没有意义差别）。
 
+### 用量与估算金额
+
+Host 侧还会从同一批日志里聚合 `assistant/message` 的 `usage`：
+
+- **今日**：input / output / cacheRead / 请求数，见顶部 KPI「今日 tokens」
+- **近 7 天**：逐日请求与 token 量
+- **各模型**：按输出 token 排序的前 6 名（日志里没有模型名时归入 `unknown`）
+
+**金额是可选的。** 把 `prices.json` 填上你供应商的实际单价（每百万 token，四档：`input` / `cacheMiss` / `cacheHit` / `output`），KPI 就会从「今日 tokens」变成「今日消耗 ¥x.xx」：
+
+```json
+{
+  "deepseek-chat": { "input": 2, "cacheMiss": 2, "cacheHit": 0.5, "output": 8 }
+}
+```
+
+计算公式与社区用量插件同口径：`cost = (未命中 × cacheMiss + 命中 × cacheHit + 输出 × output) / 1e6`。
+**价目表为空时不显示金额**——宁可显示 token，也不编造一个价格。
+
+> 路由名带版本（`/workflow-monitor/usage-v2`）：宿主的具名路由在插件重载时不会自动释放，改路由名是避开上一代注册的稳妥做法。
+
 ## 7. 已知限制
 
 - 场景在 iframe 中：同源才能直接调用 `contentWindow.__HF`，否则回退 `postMessage`
