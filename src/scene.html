@@ -1581,7 +1581,7 @@ let HF_IDX = null, HF_IDX_LAST = -99, HF_IDX_SEEDED = '', HF_HISTORY = null, HF_
 /* store ids and log ids differ by a `session-` prefix; match on the bare uuid */
 const normId = (v) => String(v == null ? '' : v).replace(/^session-/, '');
 function hfSeedIdx() {
-  const sig = HF_IDX.ids.join(',') + '|' + (HF_HISTORY ? 'h' + HF_HISTORY_STAMP : 'l');
+  const sig = HF_IDX.ids.join(',') + '|' + (HF_HISTORY ? 'h' + HF_HISTORY_STAMP : 'l') + '|' + HF_IDX.ids.map((i) => ((HF_IDX.state[i] || {}).running ? 1 : 0)).join('');
   if (HF_IDX_SEEDED === sig) return;
   HF_IDX_SEEDED = sig;
   const cols = 28, now = Date.now();
@@ -1600,7 +1600,8 @@ function hfSeedIdx() {
     const back = la ? Math.floor((now - la) / (HF_IDX_BUCKET * 1000)) : -1;
     let at = back >= 0 ? cols - 1 - Math.min(cols - 1, back) : -1;
     // never leave a live session invisible: with no recorded activity, mark "now"
-    if (at < 0 && (HF_IDX.state[id] || {}).running) at = cols - 1;
+    const live = !!(HF_IDX.state[id] || {}).running;
+    if (live) at = cols - 1; else if (at < 0) at = -1;
     for (let i = 0; i < cols; i++) row.push(i === at ? 0.75 : 0);
   }
 }
@@ -1631,7 +1632,7 @@ function hfDrawIdxLive(x, w, h) {
     x.fillText(String(cur.label || ('M' + String(j + 1).padStart(2, '0'))).slice(0, 3), 0, j * ch + ch / 2);
     for (let i = 0; i < cols; i++) {
       const v = row[row.length - cols + i] || 0;
-      x.fillStyle = v > 0.86 ? '#f0a6c6' : v > 0.5 ? 'rgba(240,166,198,.45)' : v > 0.3 ? '#4a4e56' : '#1c1e23';
+      x.fillStyle = v > 0.86 ? '#f0a6c6' : v > 0.5 ? 'rgba(240,166,198,.45)' : v > 0.3 ? '#4a4e56' : '#262a31';
       if (i === scan) x.fillStyle = v > 0.3 ? '#ffffff' : '#3a3e46';
       x.fillRect(lx + i * cw, j * ch + 1, cw - 1, ch - 2);
     }
